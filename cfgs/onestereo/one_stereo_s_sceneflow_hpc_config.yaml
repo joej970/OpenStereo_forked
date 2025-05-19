@@ -5,11 +5,11 @@ DATA_CONFIG:
                 # TRAINING: ./data/SceneFlow/sceneflow_finalpass_train.txt,
                 # EVALUATING: ./data/SceneFlow/sceneflow_finalpass_test.txt,
                 # TESTING: ./data/SceneFlow/sceneflow_finalpass_test.txt
-                TRAINING: datasets\sceneflow/sceneflow_driving_train.txt,
-                EVALUATING: datasets\sceneflow/sceneflow_driving_valid.txt,
-                TESTING: datasets\sceneflow/sceneflow_driving_test.txt
+                TRAINING: ~/datasets\sceneflow/sceneflow_driving_train.txt,
+                EVALUATING: ~/datasets\sceneflow/sceneflow_driving_valid.txt,
+                TESTING: ~/datasets\sceneflow/sceneflow_driving_test.txt
             }
-            DATA_PATH: ~/
+            DATA_PATH: ~/datasets\sceneflow
             # DATA_PATH: D:\OneDrive\OneDrive - Univerza v Ljubljani\datasets\sceneflow\driving_finalpass
             RETURN_RIGHT_DISP: false
 
