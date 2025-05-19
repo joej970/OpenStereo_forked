@@ -1,0 +1,20 @@
+DATA_CONFIG:
+    DATA_INFOS:
+        -   DATASET: SceneFlowDataset
+            DATA_SPLIT: {
+                # TRAINING: ./data/SceneFlow/sceneflow_finalpass_train.txt,
+                # EVALUATING: ./data/SceneFlow/sceneflow_finalpass_test.txt,
+                # TESTING: ./data/SceneFlow/sceneflow_finalpass_test.txt
+                TRAINING: datasets\sceneflow/sceneflow_driving_train_dev.txt,
+                EVALUATING: datasets\sceneflow/sceneflow_driving_valid_dev.txt,
+                TESTING: datasets\sceneflow/sceneflow_driving_test_dev.txt
+            }
+            DATA_PATH: ~/
+            # DATA_PATH: D:\OneDrive\OneDrive - Univerza v Ljubljani\datasets\sceneflow\driving_finalpass
+            RETURN_RIGHT_DISP: false
+
+
+OPTIMIZATION:
+    BATCH_SIZE_PER_GPU: 12
+
+    

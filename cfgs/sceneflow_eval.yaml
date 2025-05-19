@@ -2,9 +2,9 @@ DATA_CONFIG:
     DATA_INFOS:
         -   DATASET: SceneFlowDataset
             DATA_SPLIT: {
-                EVALUATING: ./data/SceneFlow/sceneflow_finalpass_test.txt,
+                EVALUATING: D:\OneDrive\OneDrive - Univerza v Ljubljani\datasets\sceneflow\driving_finalpass/sceneflow_driving_valid.txt,
             }
-            DATA_PATH: /yourpath/SceneFlow
+            DATA_PATH: D:\OneDrive\OneDrive - Univerza v Ljubljani\datasets\sceneflow\driving_finalpass
             RETURN_RIGHT_DISP: false
 
     DATA_TRANSFORM:

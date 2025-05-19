@@ -16,12 +16,24 @@ from stereo.utils import common_utils
 from stereo.modeling import build_trainer
 from cfgs.data_basic import DATA_PATH_DICT
 
+def recursive_merge(base, update):
+    """
+    Recursively merge two dictionaries. The `update` dictionary will overwrite or add to the `base` dictionary.
+    """
+    for key, value in update.items():
+        if isinstance(value, dict) and key in base and isinstance(base[key], dict):
+            # If both base and update have a dictionary for this key, merge them recursively
+            recursive_merge(base[key], value)
+        else:
+            # Otherwise, overwrite or add the value
+            base[key] = value
 
 def parse_config():
     parser = argparse.ArgumentParser(description='arg parser')
     # mode
     parser.add_argument('--dist_mode', action='store_true', default=False, help='torchrun ddp multi gpu')
     parser.add_argument('--cfg_file', type=str, default=None, required=True, help='specify the config for training')
+    parser.add_argument('--data_cfg_file', type=str, default=None, required=True, help='specify the dataset config for training')
     parser.add_argument('--fix_random_seed', action='store_true', default=False, help='')
     # save path
     parser.add_argument('--save_root_dir', type=str, default='./output', help='save root dir for this experiment')
@@ -29,10 +41,26 @@ def parse_config():
     # dataloader
     parser.add_argument('--workers', type=int, default=8, help='number of workers for dataloader')
     parser.add_argument('--pin_memory', action='store_true', default=False, help='data loader pin memory')
+    parser.add_argument('--force_override', action='store_true', default=False, help='Force overwrite the existing experiment')
 
     args = parser.parse_args()
     yaml_config = common_utils.config_loader(args.cfg_file)
     cfgs = EasyDict(yaml_config)
+
+     # Load the data config file
+    if args.data_cfg_file:
+        data_yaml_config = common_utils.config_loader(args.data_cfg_file)
+        data_cfgs = EasyDict(data_yaml_config)
+
+        # # Replace or merge only the DATA_INFOS section
+        # if 'DATA_CONFIG' in data_cfgs and 'DATA_INFOS' in data_cfgs.DATA_CONFIG:
+        #     cfgs.DATA_CONFIG.DATA_INFOS = data_cfgs.DATA_CONFIG.DATA_INFOS  # Replace DATA_INFOS
+        # if 'OPTIMIZATION' in data_cfgs:
+        #     cfgs.OPTIMIZATION.BATCH_SIZE_PER_GPU = data_cfgs.OPTIMIZATION.BATCH_SIZE_PER_GPU
+
+        # Recursively merge data_cfgs into cfgs
+        recursive_merge(cfgs, data_cfgs)
+
 
     dataset_names = [x.DATASET for x in cfgs.DATA_CONFIG.DATA_INFOS]
     unique_dataset_names = list(set(dataset_names))
@@ -47,9 +75,12 @@ def parse_config():
         dataset_name = each.DATASET
         if dataset_name == 'KittiDataset':
             dataset_name = 'KittiDataset15' if 'kitti15' in each.DATA_SPLIT.EVALUATING else 'KittiDataset12'
-        each.DATA_PATH = DATA_PATH_DICT[dataset_name]
+        # each.DATA_PATH = DATA_PATH_DICT[dataset_name]
 
     args.run_mode = 'train'
+    # print(f"data_path: {cfgs.DATA_CONFIG.DATA_INFOS[0].DATA_PATH}")
+   
+
     return args, cfgs
 
 
@@ -74,7 +105,13 @@ def main():
     # savedir
     args.output_dir = str(os.path.join(args.save_root_dir, args.exp_group_path, args.tag, args.extra_tag))
     if os.path.exists(args.output_dir) and args.extra_tag != 'debug' and cfgs.MODEL.CKPT == -1:
-        raise Exception('There is already an exp with this name')
+        if args.force_override:
+            print(f"Force override the existing experiment: {args.output_dir}")
+            import shutil
+            shutil.rmtree(args.output_dir)
+            os.makedirs(args.output_dir, exist_ok=True)
+        else:
+            raise Exception(f"There is already an exp with this name: {args.output_dir}")
     if args.dist_mode:
         dist.barrier()
     args.ckpt_dir = os.path.join(args.output_dir, 'ckpt')

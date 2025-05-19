@@ -4,7 +4,9 @@ tensorboard
 six
 pyyaml
 opencv-python
-timm==0.4.12
+# timm==0.4.12
+timm==0.9.*
 scikit-image
 thop
 matplotlib
+h5py

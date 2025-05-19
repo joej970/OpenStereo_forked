@@ -197,6 +197,7 @@ class StereoBase(nn.Module):
                                              iter08=True,
                                              iter04=False,
                                              update=False)
+            # update_block: def forward(self, net, inp, corr=None, disp=None, iter04=True, iter08=True, iter16=True, update=True):
             net_list, mask_feat_4, delta_disp = self.update_block(net_list, inp_list, geo_feat, disp,
                                                                   iter16=self.n_gru_layers == 3,
                                                                   iter08=self.n_gru_layers >= 2)

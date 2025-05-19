@@ -1,3 +1,9 @@
+import torch
+import torch.nn as nn
+
+
+
+
 import torch.nn as nn
 import torch.nn.functional as F
 from stereo.modeling.common.basic_block_2d import BasicConv2d, BasicDeconv2d
@@ -9,7 +15,7 @@ from .backbone import Backbone, FPNLayer
 from .aggregation import Aggregation
 
 
-class LightStereo(nn.Module):
+class oneStereo(torch.nn.Module):
     def __init__(self, cfgs):
         super().__init__()
         self.max_disp = cfgs.MAX_DISP
@@ -43,6 +49,22 @@ class LightStereo(nn.Module):
         self.refine_3 = BasicDeconv2d(16, 9, kernel_size=4, stride=2, padding=1)
 
     def forward(self, data):
+
+        # return x + 1
+    
+        # Feature extraction
+
+        # Matching cost computation
+
+        # Cost aggregation
+
+        # Refinement
+        
+        # Disparity regression
+
+        # Output the final disparity map
+
+
         image1 = data['left']
         image2 = data['right']
 
@@ -85,3 +107,5 @@ class LightStereo(nn.Module):
         loss_info = {'scalar/train/loss_disp': loss.item()}
 
         return loss, loss_info
+
+

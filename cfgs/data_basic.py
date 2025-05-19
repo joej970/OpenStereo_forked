@@ -1,7 +1,8 @@
 # @Time    : 2024/4/1 13:41
 # @Author  : zhangchenming
 DATA_PATH_DICT = {
-    'SceneFlowDataset': '/mnt/nas/algorithm/chenming.zhang/dataset/SceneFlow',
+    # 'SceneFlowDataset': '/mnt/nas/algorithm/chenming.zhang/dataset/SceneFlow',
+    'SceneFlowDataset': 'D:/OneDrive/OneDrive - Univerza v Ljubljani/datasets/sceneflow/driving_finalpass',
     'FlyingThings3DSubsetDataset': '/mnt/nas/algorithm/chenming.zhang/dataset/SceneFlow',
     'KittiDataset12': '/mnt/nas/algorithm/chenming.zhang/dataset/KITTI/stereo_2012',
     'KittiDataset15': '/mnt/nas/algorithm/chenming.zhang/dataset/KITTI/stereo_2015',

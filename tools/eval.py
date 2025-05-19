@@ -85,6 +85,15 @@ def main():
     trainer = build_trainer(args, cfgs, local_rank, global_rank, logger, tb_writer)
     trainer.evaluate(current_epoch=0)
 
+# python tools/eval.py --cfg_file cfgs/lightstereo/lightstereo_s_sceneflow.yaml --eval_data_cfg_file cfgs/sceneflow_eval.yaml --pretrained_model cfgs\lightstereo\LightStereo-M-SceneFlow.ckpt
 
 if __name__ == '__main__':
+    # import sys
+    # Manually supply arguments for debugging
+    # sys.argv = [
+    #     'python tools/eval.py',  # Script name
+    #     '--cfg_file','cfgs/lightstereo/lightstereo_s_sceneflow.yaml',
+    #     '--eval_data_cfg_file','cfgs/sceneflow_eval.yaml',
+    #     '--pretrained_model','cfgs\lightstereo\LightStereo-M-SceneFlow.ckpt'
+    # ]
     main()
