@@ -60,8 +60,8 @@ class Backbone(nn.Module):
 
             self.output_channels = channels[::-1]
 
-            for name, param in model.named_parameters():
-                print(f"{name}: requires_grad={param.requires_grad}")
+            # for name, param in model.named_parameters():
+            #     print(f"{name}: requires_grad={param.requires_grad}")
 
             return
 
