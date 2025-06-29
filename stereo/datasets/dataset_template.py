@@ -27,6 +27,14 @@ class DatasetTemplate(torch_data.Dataset):
         if os.path.exists(self.split_file):
             with open(self.split_file, 'r') as fp:
                 self.data_list.extend([x.strip().split(' ') for x in fp.readlines()])
+        else:
+            split_file_expanded = os.path.expanduser(self.data_info.DATA_SPLIT[self.mode.upper()])
+            print(f"Expanded filename '{self.split_file}' to '{split_file_expanded}'.")
+            if os.path.exists(split_file_expanded):
+                with open(split_file_expanded, 'r') as fp:
+                    self.data_list.extend([x.strip().split(' ') for x in fp.readlines()])
+            else:
+                raise FileNotFoundError(f"Neither file {self.split_file} nor {split_file_expanded} exist.")
 
         transform_config = self.data_cfg.DATA_TRANSFORM[self.mode.upper()]
         self.transform = build_transform_by_cfg(transform_config)

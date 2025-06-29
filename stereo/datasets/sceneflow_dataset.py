@@ -28,8 +28,8 @@ class SceneFlowDataset(DatasetTemplate):
         full_paths = [os.path.join(self.root, x) for x in item[0:3]]
         
         left_img_path, right_img_path, disp_img_path = full_paths
-        print(f'left_img_path: {left_img_path}')
-        print(f'right_img_path: {right_img_path}')
+        # print(f'left_img_path: {left_img_path}')
+        # print(f'right_img_path: {right_img_path}')
         left_img = Image.open(left_img_path).convert('RGB')
         left_img = np.array(left_img, dtype=np.float32)
         right_img = Image.open(right_img_path).convert('RGB')

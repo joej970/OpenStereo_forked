@@ -6,6 +6,7 @@ import argparse
 import datetime
 import tqdm
 from easydict import EasyDict
+import socket
 
 import torch
 import torch.distributed as dist
@@ -42,6 +43,9 @@ def parse_config():
     parser.add_argument('--workers', type=int, default=8, help='number of workers for dataloader')
     parser.add_argument('--pin_memory', action='store_true', default=False, help='data loader pin memory')
     parser.add_argument('--force_override', action='store_true', default=False, help='Force overwrite the existing experiment')
+    parser.add_argument('--backend', type=str, default='nccl', help='gpu intercommunication backend, default is nccl, options: gloo, nccl')
+    parser.add_argument('--enable_profiler', action='store_true', help='Enable torch.profiler for debugging')
+
 
     args = parser.parse_args()
     yaml_config = common_utils.config_loader(args.cfg_file)
@@ -83,18 +87,82 @@ def parse_config():
 
     return args, cfgs
 
+# slurm environment variables
+# WORLD_SIZE = int(os.environ['SLURM_NTASKS'])
+# WORLD_RANK = int(os.environ['SLURM_PROCID'])
+# LOCAL_RANK = int(os.environ['SLURM_LOCALID'])
+# torchrun environment variables
+# WORLD_SIZE = int(os.environ['WORLD_SIZE'])
+# WORLD_RANK = int(os.environ['RANK'])
+# LOCAL_RANK = int(os.environ['LOCAL_RANK'])
+
+
+# print("tasks per node: ", os.environ['SLURM_TASKS_PER_NODE'])
+# GROUP_RANK = WORLD_RANK/2
+
 
 def main():
+    print("In main() function of train.py")
     args, cfgs = parse_config()
     if args.dist_mode:
-        dist.init_process_group(backend='nccl')
-        local_rank = int(os.environ["LOCAL_RANK"])
-        global_rank = int(os.environ["RANK"])
-        group_rank = int(os.environ["GROUP_RANK"])
+        id = os.getpid()
+        print(f"Process {id}: Starting distributed process...")
+        # WORLD_SIZE = int(os.environ['SLURM_NTASKS'])
+        # WORLD_RANK = int(os.environ['SLURM_PROCID'])
+        # LOCAL_RANK = int(os.environ['SLURM_LOCALID'])
+
+
+        print(f"Process {id}: env vars: LOCAL_RANK: {int(os.environ['RANK'])}, WORLD_RANK: {int(os.environ['RANK'])}, WORLD_SIZE: {int(os.environ['WORLD_SIZE'])}")
+
+        print(f"Process {id}: prior to init_process_group")
+        # dist.init_process_group(backend=args.backend,init_method='env://', world_size=WORLD_SIZE, rank=WORLD_RANK)
+        dist.init_process_group(backend=args.backend)
+        # dist.init_process_group(backend='nccl',init_method='env://', world_size=WORLD_SIZE, rank=WORLD_RANK)
+
+
+        print(f"Process {id}: after init_process_group")
+
+        WORLD_RANK = dist.get_rank()
+        LOCAL_RANK = WORLD_RANK
+        WORLD_SIZE = dist.get_world_size()
+
+        if LOCAL_RANK != int(os.environ.get("LOCAL_RANK", 0)):
+            raise ValueError(f"Local rank mismatch: expected {os.environ.get('LOCAL_RANK', 0)}, got {LOCAL_RANK}")
+        
+        local_rank = LOCAL_RANK
+        global_rank = WORLD_RANK
+        group_rank = int(global_rank//2)
+
+        hostname = socket.gethostname()
+        
+        print(f"[Rank {LOCAL_RANK}/{WORLD_SIZE}] torch sees {torch.cuda.device_count()} GPUs")
+
+        # dist.barrier()
+        # if rank == 0:
+        #     print("✅ All ranks reached the barrier. DDP is working!", flush=True)
+
+        # local_rank = int(os.environ["LOCAL_RANK"])
+        # global_rank = int(os.environ["RANK"])
+        # world_size = int(os.environ["WORLD_SIZE"])
+        print(f"Process {id}: [Rank {global_rank}/{WORLD_SIZE}({WORLD_SIZE})] Hello from {hostname}. Env vars: Local Rank: {local_rank}, Global Rank: {global_rank}, group rank: {group_rank}, world_size: {WORLD_RANK}, dist.rank: {dist.get_rank()}, dist.world_size: {dist.get_world_size()}")
+
+        # if local_rank != LOCAL_RANK:
+        #     raise ValueError(f"Local rank mismatch: expected {LOCAL_RANK}, got {local_rank}")
+        # if global_rank != WORLD_RANK:
+        #     raise ValueError(f"Global rank mismatch: expected {WORLD_RANK}, got {global_rank}")
+        
+        # torch.cuda.set_device(LOCAL_RANK)
+        
+
+        # print(f"[Rank {rank}/{world_size}] LOCAL_RANK: {LOCAL_RANK}, WORLD_RANK: {WORLD_RANK}, WORLD_SIZE: {WORLD_SIZE}")
+        torch.backends.cuda.matmul.allow_tf32 = True
+        torch.backends.cudnn.allow_tf32 = True
+
     else:
         local_rank = 0
         global_rank = 0
         group_rank = 0
+        WORLD_SIZE = 1
 
     # env
     torch.cuda.set_device(local_rank)
@@ -104,16 +172,23 @@ def main():
 
     # savedir
     args.output_dir = str(os.path.join(args.save_root_dir, args.exp_group_path, args.tag, args.extra_tag))
-    if os.path.exists(args.output_dir) and args.extra_tag != 'debug' and cfgs.MODEL.CKPT == -1:
-        if args.force_override:
-            print(f"Force override the existing experiment: {args.output_dir}")
-            import shutil
-            shutil.rmtree(args.output_dir)
-            os.makedirs(args.output_dir, exist_ok=True)
-        else:
-            raise Exception(f"There is already an exp with this name: {args.output_dir}")
+    if global_rank == 0:
+        if os.path.exists(args.output_dir) and args.extra_tag != 'debug' and cfgs.MODEL.CKPT == -1:
+            if args.force_override:
+                print(f"Force override the existing experiment: {args.output_dir}")
+                import shutil
+                shutil.rmtree(args.output_dir)
+                os.makedirs(args.output_dir, exist_ok=True)
+            else:
+                raise Exception(f"There is already an exp with this name: {args.output_dir}")
     if args.dist_mode:
+        print(f"Process {os.getpid()}: [Rank {global_rank}/{WORLD_SIZE}] Waiting for all ranks to reach the barrier.")
         dist.barrier()
+        if global_rank == 0:
+            print(f"Process {os.getpid()}: [Rank {global_rank}/{WORLD_SIZE}]: ✅ All ranks reached the barrier. DDP is working!")
+        else:
+            print(f"Process {os.getpid()}: [Rank {global_rank}/{WORLD_SIZE}]: Continue after 1st barrier.")
+
     args.ckpt_dir = os.path.join(args.output_dir, 'ckpt')
     if not os.path.exists(args.ckpt_dir) and local_rank == 0:
         os.makedirs(args.ckpt_dir, exist_ok=True)
@@ -121,7 +196,7 @@ def main():
         common_utils.backup_source_code(os.path.join(args.output_dir, 'code'))
     if args.dist_mode:
         dist.barrier()
-
+        print(f"Process {os.getpid()}: [Rank {global_rank}/{WORLD_SIZE}]: Continue after 2nd barrier.")
     # logger
     log_file = os.path.join(args.output_dir, 'train_{}_{}.log'.format(datetime.datetime.now().strftime('%Y%m%d-%H%M%S'), group_rank))
     logger = common_utils.create_logger(log_file, rank=local_rank)
@@ -132,13 +207,17 @@ def main():
     if global_rank == 0:
         os.system('cp %s %s' % (args.cfg_file, args.output_dir))
 
+    print(f"Process {os.getpid()}: [Rank {global_rank}/{WORLD_SIZE}]: Building trainer.")
     # trainer
-    model_trainer = build_trainer(args, cfgs, local_rank, global_rank, logger, tb_writer)
+    model_trainer = build_trainer(args, cfgs, local_rank, global_rank, logger, tb_writer, enable_profiler=args.enable_profiler) 
+
+    print(f"Process {os.getpid()}: [Rank {global_rank}/{WORLD_SIZE}]: Trainer built successfully.")
 
     tbar = tqdm.trange(model_trainer.last_epoch + 1, model_trainer.total_epochs,
                        desc='epochs', dynamic_ncols=True, disable=(local_rank != 0),
                        bar_format='{l_bar}{bar}{r_bar}\n')
     # train loop
+    print(f"Process {os.getpid()}: [Rank {global_rank}/{WORLD_SIZE}]: Starting training loop.")
     for current_epoch in tbar:
         model_trainer.train(current_epoch, tbar)
         model_trainer.save_ckpt(current_epoch)
@@ -146,5 +225,22 @@ def main():
             model_trainer.evaluate(current_epoch)
 
 
+# python -m debugpy --listen 0.0.0.0:5678 --wait-for-client ./tools/train.py
+
 if __name__ == '__main__':
+    import sys
+    # Manually supply arguments for debugging
+    # sys.argv = [
+    #     'python tools/train.py',  # Script name
+    #     '--cfg_file',      './cfgs/onestereo/one_stereo_s_sceneflow_dev.yaml', 
+    #     '--data_cfg_file', './cfgs/onestereo/one_stereo_s_sceneflow_hpc_config.yaml', 
+    #     '--workers', '2',
+    #     '--force_override'
+    # ]
+    print("Running training script with the following arguments:")
+    for arg in sys.argv[1:]:
+        print(arg)
+    
+    print("Current working directory:", os.getcwd())
+    print("Python executable:", sys.executable)
     main()

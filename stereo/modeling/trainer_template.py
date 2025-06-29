@@ -18,13 +18,14 @@ from stereo.evaluation.metric_per_image import epe_metric, d1_metric, threshold_
 
 
 class TrainerTemplate:
-    def __init__(self, args, cfgs, local_rank, global_rank, logger, tb_writer, model):
+    def __init__(self, args, cfgs, local_rank, global_rank, logger, tb_writer, model, enable_profiler=False):
         self.args = args
         self.cfgs = cfgs
         self.local_rank = local_rank
         self.global_rank = global_rank
         self.logger = logger
         self.tb_writer = tb_writer
+        self.enable_profiler = enable_profiler
 
         self.model = self.build_model(model)
 
@@ -38,7 +39,8 @@ class TrainerTemplate:
             self.last_epoch = -1
 
             self.optimizer, self.scheduler = self.build_optimizer_and_scheduler()
-            self.scaler = torch.cuda.amp.GradScaler(enabled=cfgs.OPTIMIZATION.AMP)
+            # self.scaler = torch.cuda.amp.GradScaler(enabled=cfgs.OPTIMIZATION.AMP)
+            self.scaler = torch.amp.GradScaler('cuda:%d' % self.local_rank, enabled=cfgs.OPTIMIZATION.AMP)
 
             if self.cfgs.MODEL.CKPT > -1:
                 self.resume_ckpt()
@@ -153,6 +155,7 @@ class TrainerTemplate:
             self.model = common_utils.freeze_bn(self.model)
         if self.args.dist_mode:
             self.train_sampler.set_epoch(current_epoch)
+            print(f"Rank {self.local_rank} set epoch to {current_epoch} for distributed training.")
         self.train_one_epoch(current_epoch=current_epoch, tbar=tbar)
         if self.args.dist_mode:
             dist.barrier()
@@ -185,6 +188,23 @@ class TrainerTemplate:
         total_loss = 0.0
         loss_func = self.model.module.get_loss if self.args.dist_mode else self.model.get_loss
 
+        # profiler
+        prof = None
+        if self.enable_profiler and self.local_rank == 0 and current_epoch == 0:
+            from torch.profiler import profile, schedule, tensorboard_trace_handler, ProfilerActivity
+
+            prof = profile(
+                activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
+                schedule=schedule(wait=1, warmup=1, active=3, repeat=0),
+                on_trace_ready=tensorboard_trace_handler(os.path.join(self.args.output_dir, "profiler")),
+                record_shapes=True,
+                profile_memory=True,
+                with_stack=True
+            )
+            prof.__enter__()
+        # profiler
+
+
         train_loader_iter = iter(self.train_loader)
         for i in range(0, len(self.train_loader)):
             self.optimizer.zero_grad()
@@ -196,7 +216,8 @@ class TrainerTemplate:
                 data[k] = v.to(self.local_rank) if torch.is_tensor(v) else v
             data_timer = time.time()
 
-            with torch.cuda.amp.autocast(enabled=self.cfgs.OPTIMIZATION.AMP):
+            # with torch.cuda.amp.autocast(enabled=self.cfgs.OPTIMIZATION.AMP):
+            with torch.amp.autocast('cuda:%d' % self.local_rank, enabled=self.cfgs.OPTIMIZATION.AMP):
                 model_pred = self.model(data)
                 infer_timer = time.time()
                 loss, tb_info = loss_func(model_pred, data)
@@ -243,6 +264,19 @@ class TrainerTemplate:
             tb_info.update({'scalar/train/lr': lr})
             if total_iter % logger_iter_interval == 0 and self.local_rank == 0 and self.tb_writer is not None:
                 write_tensorboard(self.tb_writer, tb_info, total_iter)
+            if prof:
+                prof.step()
+                message = ('Profiling Epoch:{:>2d} to file {:s} Iter:{:>4d}').format(
+                    current_epoch, os.path.join(self.args.output_dir, "profiler"), i)
+                self.logger.info(message)
+
+           
+                if i >= 5:  # Stop profiling after a few steps
+                    self.logger.info("Profiling finished.")
+                    message = ('{:s}').format(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
+                    self.logger.info(message)
+                    prof.__exit__(None, None, None)
+                    prof = None
 
     @torch.no_grad()
     def eval_one_epoch(self, current_epoch):
@@ -266,7 +300,8 @@ class TrainerTemplate:
             for k, v in data.items():
                 data[k] = v.to(local_rank) if torch.is_tensor(v) else v
 
-            with torch.cuda.amp.autocast(enabled=self.cfgs.OPTIMIZATION.AMP):
+            # with torch.cuda.amp.autocast(enabled=self.cfgs.OPTIMIZATION.AMP):
+            with torch.amp.autocast('cuda:%d' % local_rank, enabled=self.cfgs.OPTIMIZATION.AMP):
                 infer_start = time.time()
                 model_pred = self.model(data)
                 infer_time = time.time() - infer_start

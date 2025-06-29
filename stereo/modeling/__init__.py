@@ -43,6 +43,6 @@ __all__ = {
 }
 
 
-def build_trainer(args, cfgs, local_rank, global_rank, logger, tb_writer):
-    trainer = __all__[cfgs.MODEL.NAME](args, cfgs, local_rank, global_rank, logger, tb_writer)
+def build_trainer(args, cfgs, local_rank, global_rank, logger, tb_writer, enable_profiler=False):
+    trainer = __all__[cfgs.MODEL.NAME](args, cfgs, local_rank, global_rank, logger, tb_writer, enable_profiler=enable_profiler)
     return trainer

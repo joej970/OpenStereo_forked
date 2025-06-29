@@ -45,6 +45,8 @@ def build_dataloader(data_cfg, batch_size, is_dist, workers, pin_memory, mode):
         all_dataset.append(dataset)
     dataset = torch.utils.data.ConcatDataset(all_dataset)
 
+    print(f"Dataset length ({mode}): {len(dataset)}")
+
     shuffle = True if mode=='training' else False
     if is_dist:
         sampler = DistributedSampler(dataset, shuffle=shuffle)
@@ -68,6 +70,17 @@ def build_dataloader(data_cfg, batch_size, is_dist, workers, pin_memory, mode):
         num_workers=workers,
         collate_fn=partial_custom_collate,
         pin_memory=pin_memory,
-        drop_last=False
+        drop_last=False, 
+        prefetch_factor=4, 
+        persistent_workers=True
     )
+    # loader = DataLoader(
+    #     dataset=dataset,
+    #     batch_size=batch_size,
+    #     sampler=sampler,
+    #     num_workers=workers,
+    #     collate_fn=partial_custom_collate,
+    #     pin_memory=pin_memory,
+    #     drop_last=False
+    # )
     return dataset, loader, sampler
