@@ -1,0 +1,22 @@
+DATA_CONFIG:
+    DATA_INFOS:
+        -   DATASET: SceneFlowDataset
+            DATA_SPLIT: {
+                # TRAINING:   /d/hpc/home/zr1677/datasets/sceneflow/sceneflow_finalpass_train.txt,
+                # EVALUATING: /d/hpc/home/zr1677/datasets/sceneflow/sceneflow_finalpass_valid.txt,
+                # TESTING:    /d/hpc/home/zr1677/datasets/sceneflow/sceneflow_finalpass_test.txt
+                TRAINING:   /d/hpc/home/zr1677/datasets/sceneflow/sceneflow_finalpass_train_dev.txt,
+                EVALUATING: /d/hpc/home/zr1677/datasets/sceneflow/sceneflow_finalpass_valid_dev.txt,
+                TESTING:    /d/hpc/home/zr1677/datasets/sceneflow/sceneflow_finalpass_test_dev.txt
+            }
+            DATA_PATH: /d/hpc/home/zr1677/datasets/sceneflow
+            # DATA_PATH: D:\OneDrive\OneDrive - Univerza v Ljubljani\datasets\sceneflow\driving_finalpass
+            RETURN_RIGHT_DISP: false
+
+
+OPTIMIZATION:
+    # BATCH_SIZE_PER_GPU: 12
+    BATCH_SIZE_PER_GPU: 16
+    # BATCH_SIZE_PER_GPU: 128 too much for 2x h100
+
+    

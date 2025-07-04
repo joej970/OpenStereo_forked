@@ -12,7 +12,14 @@ import torch
 import torch.distributed as dist
 from torch.utils.tensorboard import SummaryWriter
 
-sys.path.insert(0, './')
+# sys.path.insert(0, './')
+# Add the project root to Python path
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(current_dir)  # Go up one level from tools/ to project root
+sys.path.insert(0, project_root)
+print(f"Added to Python path: {project_root}")
+print(f"Current working directory: {os.getcwd()}")
+
 from stereo.utils import common_utils
 from stereo.modeling import build_trainer
 from cfgs.data_basic import DATA_PATH_DICT
@@ -45,6 +52,9 @@ def parse_config():
     parser.add_argument('--force_override', action='store_true', default=False, help='Force overwrite the existing experiment')
     parser.add_argument('--backend', type=str, default='nccl', help='gpu intercommunication backend, default is nccl, options: gloo, nccl')
     parser.add_argument('--enable_profiler', action='store_true', help='Enable torch.profiler for debugging')
+    # batch_size argument
+    parser.add_argument('--batch_size', type=int, default=None, help='Override BATCH_SIZE_PER_GPU in config')
+    parser.add_argument('--slurm_job_id', type=str, default=None, help='Optional: SLURM job ID for logging')
 
 
     args = parser.parse_args()
@@ -64,6 +74,15 @@ def parse_config():
 
         # Recursively merge data_cfgs into cfgs
         recursive_merge(cfgs, data_cfgs)
+
+        # --- Override BATCH_SIZE_PER_GPU if --batch_size is provided ---
+    if args.batch_size is not None:
+        if 'OPTIMIZATION' in cfgs and hasattr(cfgs.OPTIMIZATION, 'BATCH_SIZE_PER_GPU'):
+            cfgs.OPTIMIZATION.BATCH_SIZE_PER_GPU = args.batch_size
+        elif 'OPTIMIZATION' in cfgs:
+            cfgs.OPTIMIZATION.BATCH_SIZE_PER_GPU = args.batch_size
+        else:
+            cfgs.OPTIMIZATION = EasyDict({'BATCH_SIZE_PER_GPU': args.batch_size})
 
 
     dataset_names = [x.DATASET for x in cfgs.DATA_CONFIG.DATA_INFOS]
@@ -100,6 +119,14 @@ def parse_config():
 # print("tasks per node: ", os.environ['SLURM_TASKS_PER_NODE'])
 # GROUP_RANK = WORLD_RANK/2
 
+
+def log_configs_to_tensorboard(cfgs, tb_writer, pre='cfgs', step=0):
+    """Recursively log config parameters to tensorboard as text."""
+    for key, val in cfgs.items():
+        if isinstance(val, EasyDict):
+            log_configs_to_tensorboard(val, tb_writer, pre=pre + '.' + key, step=step)
+            continue
+        tb_writer.add_text(f"Config/{pre}.{key}", str(val), global_step=step)
 
 def main():
     print("In main() function of train.py")
@@ -197,13 +224,50 @@ def main():
     if args.dist_mode:
         dist.barrier()
         print(f"Process {os.getpid()}: [Rank {global_rank}/{WORLD_SIZE}]: Continue after 2nd barrier.")
+
+    # tensorboard
+    tb_writer = SummaryWriter(log_dir=os.path.join(args.output_dir, 'tensorboard')) if global_rank == 0 else None
+    if tb_writer is not None:
+        # Log hyperparameters
+        tb_writer.add_hparams(
+            hparam_dict=vars(args),
+            metric_dict={'hparam/epoch': 0, 'hparam/loss': 0},
+            run_name=f"{args.tag}_{args.extra_tag}"
+        )
+        # Log args as text
+        args_text = "\n".join([f"{key}: {val}" for key, val in vars(args).items()])
+        tb_writer.add_text("Arguments", args_text, global_step=0)
+        if args.slurm_job_id is not None:
+            tb_writer.add_text("System/SLURM_Job_ID", str(args.slurm_job_id), global_step=0)
+        # Log all cfgs parameters recursively to tensorboard
+        log_configs_to_tensorboard(cfgs, tb_writer, pre='cfgs', step=0)
     # logger
     log_file = os.path.join(args.output_dir, 'train_{}_{}.log'.format(datetime.datetime.now().strftime('%Y%m%d-%H%M%S'), group_rank))
     logger = common_utils.create_logger(log_file, rank=local_rank)
-    tb_writer = SummaryWriter(log_dir=os.path.join(args.output_dir, 'tensorboard')) if global_rank == 0 else None
     for key, val in vars(args).items():
         logger.info('{:16} {}'.format(key, val))
+    if args.slurm_job_id is not None:
+        logger.info(f"SLURM Job ID: {args.slurm_job_id}")
     common_utils.log_configs(cfgs, logger=logger)
+
+     # --- Log hostname and GPU info ---
+    hostname = socket.gethostname()
+    num_gpus = torch.cuda.device_count()
+    gpu_names = [torch.cuda.get_device_name(i) for i in range(num_gpus)] if num_gpus > 0 else ["No CUDA devices"]
+    num_cpus = os.cpu_count()
+
+    logger.info(f"Hostname: {hostname}")
+    logger.info(f"Number of CUDA devices: {num_gpus}")
+    logger.info(f"CUDA device(s): {', '.join(gpu_names)}")
+    logger.info(f"Number of CPU processors: {num_cpus}")
+
+    if tb_writer is not None:
+        tb_writer.add_text("System/Hostname", hostname, global_step=0)
+        tb_writer.add_text("System/Num_GPUs", str(num_gpus), global_step=0)
+        tb_writer.add_text("System/GPU_Names", "<br>".join(gpu_names), global_step=0)
+        tb_writer.add_text("System/Num_CPUs", str(num_cpus), global_step=0)
+    # --- End log hostname and GPU info ---
+
     if global_rank == 0:
         os.system('cp %s %s' % (args.cfg_file, args.output_dir))
 
@@ -228,12 +292,14 @@ def main():
 # python -m debugpy --listen 0.0.0.0:5678 --wait-for-client ./tools/train.py
 
 if __name__ == '__main__':
-    import sys
-    # Manually supply arguments for debugging
+    # import sys
+    # # Manually supply arguments for debugging
     # sys.argv = [
     #     'python tools/train.py',  # Script name
-    #     '--cfg_file',      './cfgs/onestereo/one_stereo_s_sceneflow_dev.yaml', 
-    #     '--data_cfg_file', './cfgs/onestereo/one_stereo_s_sceneflow_hpc_config.yaml', 
+    #     # '--cfg_file',      './cfgs/onestereo/one_stereo_s_sceneflow_dev.yaml', 
+    #     '--cfg_file',      './cfgs/onestereo/one_stereo_local_mobileone.yaml', 
+    #     # '--data_cfg_file', './cfgs/onestereo/one_stereo_s_sceneflow_hpc_config.yaml', 
+    #     '--data_cfg_file', './cfgs/onestereo/dataset_sceneflow_dev.yaml', 
     #     '--workers', '2',
     #     '--force_override'
     # ]

@@ -29,6 +29,18 @@ class TrainerTemplate:
 
         self.model = self.build_model(model)
 
+        # --- Add this block to log model statistics ---
+        if self.global_rank == 0:
+            num_params = sum(p.numel() for p in self.model.parameters())
+            num_trainable = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
+            self.logger.info(f"Model total parameters: {num_params:,}")
+            self.logger.info(f"Model trainable parameters: {num_trainable:,}")
+            if self.tb_writer is not None:
+                self.tb_writer.add_text("Model/Stats", 
+                    f"Total parameters: {num_params:,}<br>Trainable parameters: {num_trainable:,}", 
+                    global_step=0)
+        # --- End block ---
+
         if self.args.run_mode in ['train', 'eval']:
             self.eval_set, self.eval_loader, self.eval_sampler = self.build_eval_loader()
 

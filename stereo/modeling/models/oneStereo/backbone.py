@@ -6,6 +6,7 @@ import torch.nn as nn
 
 from functools import partial
 from stereo.modeling.common.basic_block_2d import BasicConv2d, BasicDeconv2d
+from .mobileone import mobileone, reparameterize_model
 
 
 class FPNLayer(nn.Module):
@@ -27,18 +28,71 @@ class FPNLayer(nn.Module):
 
 
 class Backbone(nn.Module):
-    def __init__(self, backbone='MobileNetv2'):
+    def __init__(self, backbone='MobileNetv2', pretrained=None, checkpoint_path=None):
         super().__init__()
         self.backbone = backbone
+        self.pretrained = pretrained if pretrained is not None else True  # Whether to use pretrained weights
+        self.checkpoint_path = checkpoint_path if checkpoint_path is not None else None  # Path to the checkpoint file, if provided
+
+        message = f"Using backbone: {self.backbone}, pretrained: {self.pretrained}, checkpoint_path: {self.checkpoint_path}"
+        print(message)
+
         if backbone == 'MobileNetv2':
             # model = timm.create_model('mobilenetv2_100', pretrained=True, features_only=True)
-            model = timm.create_model('mobilenetv2_100', pretrained=True)
+            model = timm.create_model('mobilenetv2_100', pretrained=self.pretrained)
             channels = [160, 96, 32, 24]
         elif backbone == 'EfficientNetv2':
             # model = timm.create_model('efficientnetv2_rw_s', pretrained=True, features_only=True)
-            model = timm.create_model('efficientnetv2_rw_s', pretrained=True)
+            model = timm.create_model('efficientnetv2_rw_s', pretrained=self.pretrained)
             channels = [272, 160, 64, 48]
         
+        elif backbone == 'mobileone_s0_local':  # Use local MobileOne implementation
+            model = mobileone(num_classes=1000, inference_mode=False, variant="s0")
+            
+            # Load pretrained weights from .pth file
+            # Option 1: Load unfused checkpoint (recommended for training)
+            if self.checkpoint_path is not None:
+                if self.pretrained is False:
+                    print("")
+                    print("WARNING: You supplied pretrained model but set pretrained to false.")
+                    print("")
+                    
+                # If you have a specific checkpoint path, use it
+                # Otherwise, you can use the default path below
+                
+                # self.checkpoint_path = '/d/hpc/home/zr1677/OpenStereo_forked/stereo/modeling/models/oneStereo/mobileone_s0_unfused.pth'
+                checkpoint = torch.load(self.checkpoint_path, map_location='cpu')
+                # model.load_state_dict(checkpoint, strict=False)  # strict=False in case of minor key mismatches
+                model.load_state_dict(checkpoint, strict=True)  # strict=False in case of minor key mismatches
+            else:
+                print("No checkpoint path provided, training from zero.")
+            # Option 2: If you want to use fused checkpoint for inference
+            # checkpoint_path = "path/to/mobileone_s0_fused.pth"
+            # checkpoint = torch.load(checkpoint_path, map_location='cpu')
+            # model = reparameterize_model(model)  # Convert to inference mode first
+            # model.load_state_dict(checkpoint, strict=False)
+            
+            channels = [1024, 256, 128, 48] 
+
+            # For local MobileOne, we need to access the stages directly
+            # The model structure: stage0 -> stage1 -> stage2 -> stage3 -> stage4
+            self.stage0 = model.stage0  # Initial conv block
+            self.stage1 = model.stage1 
+            self.stage2 = model.stage2
+            self.stage3 = model.stage3
+            self.stage4 = model.stage4
+
+            self.fpn_layer4 = FPNLayer(channels[0], channels[1])
+            self.fpn_layer3 = FPNLayer(channels[1], channels[2])
+            self.fpn_layer2 = FPNLayer(channels[2], channels[3])
+
+            self.out_conv = BasicConv2d(channels[3], channels[3],
+                                    kernel_size=3, padding=1, padding_mode="replicate",
+                                    norm_layer=nn.InstanceNorm2d)
+
+            self.output_channels = channels[::-1]
+
+            return
 
         elif backbone == 'mobileone_s0': # needs timm 0.9.* (default is 0.4.12); print(timm.list_models('*one*'))
             model = timm.create_model('mobileone_s0', pretrained=True, features_only=True)
@@ -96,6 +150,20 @@ class Backbone(nn.Module):
             c2 = self.stage1(c1) # [bz, 128, H/8, W/8]
             c3 = self.stage2(c2) # [bz, 256, H/16, W/16]
             c4 = self.stage3(c3) # [bz, 1024, H/32, W/32]
+
+            p4 = self.fpn_layer4(c4, c3)  # 1024->256: [bz, 256, H/16, W/16]
+            p3 = self.fpn_layer3(p4, c2)  # 256->128 [bz, 128, H/8, W/8]
+            p2 = self.fpn_layer2(p3, c1)  # 128->48 [bz, 48, H/4, W/4]
+            p2 = self.out_conv(p2)        # 48->48 [bz, 48, H/4, W/4]
+
+            return [p2, p3, p4, c4] # [bz, 48, H/4, W/4], [bz, 128, H/8, W/8], [bz, 256, H/16, W/16], [bz, 1024, H/32, W/32]
+
+        elif self.backbone == 'mobileone_s0_local':
+            c1 = self.stage0(images)  # [bz, 48, H/2, W/2] - stage0 is the initial conv
+            c1 = self.stage1(c1) # [bz, 48, H/4, W/4]
+            c2 = self.stage2(c1) # [bz, 128, H/8, W/8]
+            c3 = self.stage3(c2) # [bz, 256, H/16, W/16]
+            c4 = self.stage4(c3) # [bz, 1024, H/32, W/32]
 
             p4 = self.fpn_layer4(c4, c3)  # 1024->256: [bz, 256, H/16, W/16]
             p3 = self.fpn_layer3(p4, c2)  # 256->128 [bz, 128, H/8, W/8]

@@ -1,0 +1,34 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "Python: Train Script",
+        "type": "debugpy",
+        "request": "launch",
+        "program": "${workspaceFolder}/tools/train.py",
+        "args": [
+            "--cfg_file", "./cfgs/onestereo/one_stereo_local_mobileone.yaml",
+            "--data_cfg_file", "./cfgs/onestereo/dataset_sceneflow_dev.yaml",
+            "--workers", "2",
+            "--force_override"
+        ],
+        "console": "integratedTerminal",
+        "cwd": "${workspaceFolder}",
+        "env": {
+            "PYTHONPATH": "${workspaceFolder}"
+        },
+        "justMyCode": false
+      },
+      {
+        "name": "Attach to Python on port 5678",
+        "type": "debugpy",
+        "request": "attach",
+        "connect": {
+          "host": "wn210",
+          "port": 5678
+        },
+        "justMyCode": false
+      }
+    ]
+  }
+  

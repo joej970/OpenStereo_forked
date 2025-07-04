@@ -21,20 +21,24 @@ MODEL:
     FIND_UNUSED_PARAMETERS: false
     CKPT: -1
     PRETRAINED_MODEL: ''
-    BACKBONE: mobileone_s0
+    BACKBONE: mobileone_s0_local
+    BACKBONE_PRETRAINED: False
+    CHECKPOINT_PATH: 
 
 OPTIMIZATION:
     FREEZE_BN: false
     SYNC_BN: true
     AMP: true
-    BATCH_SIZE_PER_GPU: 96 # for h100
+    BATCH_SIZE_PER_GPU: 32
     NUM_EPOCHS: 90
 
     OPTIMIZER:
         NAME: AdamW
-        LR: &lr 0.0024
+        # LR: &lr 0.0024
+        LR: &lr 0.0005
         WEIGHT_DECAY: 1.0e-05
-        EPS: 1.0e-08
+        # EPS: 1.0e-08
+        EPS: 1.0e-07
 
     SCHEDULER:
         NAME: OneCycleLR

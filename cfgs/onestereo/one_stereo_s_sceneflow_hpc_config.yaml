@@ -14,9 +14,10 @@ DATA_CONFIG:
             RETURN_RIGHT_DISP: false
 
 
-OPTIMIZATION:
-    # BATCH_SIZE_PER_GPU: 12
-    BATCH_SIZE_PER_GPU: 96
+# OPTIMIZATION:
+# different batch sizes for different GPUs
+    # BATCH_SIZE_PER_GPU: 32
+    # BATCH_SIZE_PER_GPU: 96 # for h100
     # BATCH_SIZE_PER_GPU: 128 too much for 2x h100
 
     

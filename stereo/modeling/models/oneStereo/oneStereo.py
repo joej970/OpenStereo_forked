@@ -22,7 +22,7 @@ class oneStereo(torch.nn.Module):
         self.left_att = cfgs.LEFT_ATT
 
         # backbobe
-        self.backbone = Backbone(cfgs.get('BACKBONE', 'MobileNetv2'))
+        self.backbone = Backbone(cfgs.get('BACKBONE', 'MobileNetv2'), cfgs.get('BACKBONE_PRETRAINED', None), cfgs.get('CHECKPOINT_PATH', None))
         # self.backbone = Backbone(cfgs.get('BACKBONE', 'mobileone_s0'))
 
         # aggregation

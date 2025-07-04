@@ -22,12 +22,14 @@ MODEL:
     CKPT: -1
     PRETRAINED_MODEL: ''
     BACKBONE: mobileone_s0
+    BACKBONE_PRETRAINED: True
+    CHECKPOINT_PATH: 
 
 OPTIMIZATION:
     FREEZE_BN: false
     SYNC_BN: true
     AMP: true
-    BATCH_SIZE_PER_GPU: 96 # for h100
+    BATCH_SIZE_PER_GPU: 32
     NUM_EPOCHS: 90
 
     OPTIMIZER:
