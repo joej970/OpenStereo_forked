@@ -23,7 +23,7 @@ MODEL:
     PRETRAINED_MODEL: ''
     BACKBONE: mobileone_s0_local
     BACKBONE_PRETRAINED: False
-    CHECKPOINT_PATH: 
+    BACKBONE_PATH: 
 
 OPTIMIZATION:
     FREEZE_BN: false

@@ -4,6 +4,8 @@ import time
 import torch
 import argparse
 import sys
+import os
+import onnx
 import thop
 from easydict import EasyDict
 from tqdm import tqdm
@@ -40,10 +42,67 @@ def measure(model, shape):
 
     inputs = {'left': torch.randn(shape).cuda(),
               'right': torch.randn(shape).cuda()}
+    
+    left_input = inputs['left']
+    right_input = inputs['right']
 
-    flops, params = thop.profile(model, inputs=(inputs,))
-    print("Number of calculates:%.2fGFlops" % (flops / 1e9))
-    print("Number of parameters:%.2fM" % (params / 1e6))
+    # flops, params = thop.profile(model, inputs=(inputs,))
+    flops, params = thop.profile(model, inputs=(left_input,right_input))
+    message_1 = f"Number of calculates: {flops / 1e9:.2f} GFlops"
+    message_2 = f"Number of parameters: {params / 1e6:.2f} M"
+    print(message_1)
+    print(message_2)
+    return message_1, message_2, flops, params
+
+@torch.no_grad()
+def infer_time_torch_script(model, shape):
+   # CONFIGURE THESE
+    batch_size = shape[0]
+    # input_shape = (3, 224, 224)
+    num_iters = 1000
+    warmup_iters = 100
+    device = torch.device("cuda")
+
+    # Step 1: Load your model
+    # model.eval().to(device)
+
+    # Step 2: Create dummy input
+    inputs = {'left': torch.randn(shape).cuda(),
+            'right': torch.randn(shape).cuda()}
+    
+        
+    left_input = inputs['left']
+    right_input = inputs['right']
+    # dummy_input = torch.randn(*shape).to(device)
+
+    # Step 3: Trace the model with TorchScript
+    scripted_model = torch.jit.trace(model, (left_input, right_input), strict=False) 
+    # scripted_model = torch.jit.script(model)  # Use script instead of trace
+    # Note: If your model has dynamic behavior (like conditionals based on inputs), use script instead of trace.
+    # the model returns a dict which is not supported by torch.jit.trace so we need to pass strict=False
+    scripted_model.eval().to(device)
+
+    # Step 4: Warm-up (important)
+    for _ in range(warmup_iters):
+        with torch.no_grad():
+            _ = scripted_model(left_input, right_input)
+    torch.cuda.synchronize()
+
+    # Step 5: Measure inference time
+    start = time.time()
+    for _ in range(num_iters):
+        with torch.no_grad():
+            _ = scripted_model(left_input, right_input)
+    torch.cuda.synchronize()
+    end = time.time()
+
+    # Step 6: Compute throughput
+    total_time = end - start
+    throughput = batch_size * num_iters / total_time
+    message = f"Throughput TorchScript: {throughput:.2f} samples/sec"
+    print(message)
+    
+    return message, throughput
 
 
 @torch.no_grad()
@@ -53,12 +112,16 @@ def infer_time(model, shape):
 
     inputs = {'left': torch.randn(shape).cuda(),
               'right': torch.randn(shape).cuda()}
+    
+    left_input = inputs['left']
+    right_input = inputs['right']
 
     # 预热, GPU 平时可能为了节能而处于休眠状态, 因此需要预热
     print('warm up ...\n')
     with torch.no_grad():
         for _ in range(10):
-            _ = model(inputs)
+            # _ = model(inputs)
+            _ = model(left_input, right_input)
 
     # synchronize 等待所有 GPU 任务处理完才返回 CPU 主线程
     # torch.cuda.synchronize()
@@ -75,18 +138,104 @@ def infer_time(model, shape):
             # starter.record()
             infer_start = time.perf_counter()
             # infer_start = time.time()
-            result = model(inputs)
-            print(result.keys())
+            # result = model(inputs)
+            result = model(left_input, right_input)
+            # print(result.keys())
             # ender.record()
             all_time += time.perf_counter() - infer_start
             # torch.cuda.synchronize()  # 等待GPU任务完成
 
             # curr_time = starter.elapsed_time(ender)  # 从 starter 到 ender 之间用时,单位为毫秒
             # timings[rep] = curr_time
+    t_per_inference = all_time / repetitions * 1000
+    throughput = repetitions / all_time
+    message_1 = f"Performance ({repetitions} repetitions): {all_time:.3f} seconds, {t_per_inference:.3f} ms per inference, throughput: {throughput:.2f} inferences/sec"
+    print(message_1)
+
+    # Benchmark
+    num_iters = 1000
+    batch_size = shape[0]
+    torch.cuda.synchronize()
+    start = time.time()
+    for _ in range(num_iters):
+        with torch.no_grad():
+            _ = model(left_input, right_input)
+    torch.cuda.synchronize()
+    end = time.time()
+
+    throughput = batch_size * num_iters / (end - start)
+    message_2 = f"Throughput: {throughput:.2f} samples/sec"
+    print(message_2)
+    
+    return message_1, message_2, t_per_inference, throughput
 
     # avg = timings.sum() / repetitions
     # print('\navg_time=%.3fms\n' % avg)
-    print(all_time / repetitions * 1000)
+    
+
+def export_to_onnx(model, input_shape, onnx_path,
+                   
+                   use_fp16=False,
+                   dynamic_batch=False,
+                   opset_version=11):
+    """
+    Export a PyTorch model to ONNX.
+
+    Args:
+        model (nn.Module): The PyTorch model.
+        input_shape (tuple): Input shape excluding batch (e.g., (3, 224, 224)).
+        onnx_path (str): Where to save the ONNX file.
+        batch_size (int): Batch size to use during tracing.
+        use_fp16 (bool): Convert model to half precision before export.
+        dynamic_batch (bool): Use dynamic batch size in ONNX.
+        opset_version (int): ONNX opset version.
+    """
+    
+    batch_size = input_shape[0]
+    
+    model = model.eval().cuda()
+    if use_fp16:
+        model = model.half()
+
+    dtype = torch.float16 if use_fp16 else torch.float32
+    dummy_left = torch.randn(*input_shape, dtype=dtype).cuda()
+    dummy_right = torch.randn(*input_shape, dtype=dtype).cuda()
+    # dummy_input = {"left": dummy_left, "right": dummy_right}
+
+    input_names = ["left", "right"]
+    output_names = ["disp_pred"]  # adjust this if you return more
+
+    # input_names = ["input"]
+    # output_names = ["output"]
+
+    if dynamic_batch:
+        dynamic_axes = {
+            "input": {0: "batch_size"},
+            "output": {0: "batch_size"}
+        }
+    else:
+        dynamic_axes = None
+
+    torch.onnx.export(
+        model,
+        (dummy_left, dummy_right),
+        onnx_path,
+        input_names=input_names,
+        output_names=output_names,
+        dynamic_axes=dynamic_axes,
+        opset_version=opset_version,
+        do_constant_folding=True
+    )
+
+    if not os.path.exists(onnx_path):
+        raise RuntimeError(f"ONNX export failed: file not created at {onnx_path}")
+
+    try:
+        onnx_model = onnx.load(onnx_path)
+        onnx.checker.check_model(onnx_model)
+        print(f"Exported ONNX model saved to {onnx_path}")
+    except Exception as e:
+        raise RuntimeError(f"ONNX model validation failed: {e}")
 
 
 if __name__ == '__main__':

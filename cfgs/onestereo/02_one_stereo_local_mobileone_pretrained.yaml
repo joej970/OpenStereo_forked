@@ -23,7 +23,7 @@ MODEL:
     PRETRAINED_MODEL: ''
     BACKBONE: mobileone_s0_local
     BACKBONE_PRETRAINED: True
-    CHECKPOINT_PATH: /d/hpc/home/zr1677/OpenStereo_forked/stereo/modeling/models/oneStereo/mobileone_s0_unfused.pth
+    BACKBONE_PATH: /d/hpc/home/zr1677/OpenStereo_forked/stereo/modeling/models/oneStereo/mobileone_s0_unfused.pth
 
 OPTIMIZATION:
     FREEZE_BN: false

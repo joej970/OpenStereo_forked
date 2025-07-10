@@ -194,6 +194,23 @@ class TrainerTemplate:
         if self.args.dist_mode:
             dist.barrier()
 
+    def export_full_pytorch_model(model, location, name, example_input):
+        """
+        Exports the full PyTorch model as a TorchScript file.
+        Args:
+            model: The PyTorch model to export.
+            location: Directory to save the model.
+            name: File name (without extension).
+            example_input: A sample input tensor or tuple for tracing.
+        """
+        os.makedirs(location, exist_ok=True)
+        model.eval()
+        # Use torch.jit.trace to export the model
+        traced_model = torch.jit.trace(model, example_input)
+        export_path = os.path.join(location, f"{name}.pt")
+        traced_model.save(export_path)
+        print(f"Model exported to {export_path}")
+
     def train_one_epoch(self, current_epoch, tbar):
         start_epoch = self.last_epoch + 1
         logger_iter_interval = self.cfgs.TRAINER.LOGGER_ITER_INTERVAL

@@ -7,6 +7,7 @@ import datetime
 import tqdm
 from easydict import EasyDict
 import socket
+import measure
 
 import torch
 import torch.distributed as dist
@@ -54,6 +55,7 @@ def parse_config():
     parser.add_argument('--enable_profiler', action='store_true', help='Enable torch.profiler for debugging')
     # batch_size argument
     parser.add_argument('--batch_size', type=int, default=None, help='Override BATCH_SIZE_PER_GPU in config')
+    parser.add_argument('--overide_epoch', type=int, default=None, help='Override EPOCH in config.')
     parser.add_argument('--slurm_job_id', type=str, default=None, help='Optional: SLURM job ID for logging')
 
 
@@ -84,6 +86,14 @@ def parse_config():
         else:
             cfgs.OPTIMIZATION = EasyDict({'BATCH_SIZE_PER_GPU': args.batch_size})
 
+    if args.overide_epoch is not None:
+        if 'OPTIMIZATION' in cfgs and hasattr(cfgs.OPTIMIZATION, 'NUM_EPOCHS'):
+            cfgs.OPTIMIZATION.NUM_EPOCHS = args.overide_epoch
+        elif 'OPTIMIZATION' in cfgs:
+            cfgs.OPTIMIZATION.NUM_EPOCHS = args.overide_epoch
+        else:
+            cfgs.OPTIMIZATION = EasyDict({'NUM_EPOCHS': args.overide_epoch})
+
 
     dataset_names = [x.DATASET for x in cfgs.DATA_CONFIG.DATA_INFOS]
     unique_dataset_names = list(set(dataset_names))
@@ -93,6 +103,8 @@ def parse_config():
         exp_dataset_dir = 'MultiDataset'
     args.exp_group_path = os.path.join(exp_dataset_dir, cfgs.MODEL.NAME)
     args.tag = os.path.basename(args.cfg_file)[:-5]
+    message = f"Experiment group path: {args.exp_group_path}, tag: {args.tag}"
+    print(message)
 
     for each in cfgs.DATA_CONFIG.DATA_INFOS:
         dataset_name = each.DATASET
@@ -287,6 +299,57 @@ def main():
         model_trainer.save_ckpt(current_epoch)
         if current_epoch % cfgs.TRAINER.EVAL_INTERVAL == 0 or current_epoch == model_trainer.total_epochs - 1:
             model_trainer.evaluate(current_epoch)
+
+    print(f"Process {os.getpid()}: [Rank {global_rank}/{WORLD_SIZE}]: Training loop completed.")
+
+    
+        # Convert model output to just the tensor (avoid dict)
+    class WrappedModel(torch.nn.Module):
+        def __init__(self, base_model):
+            super().__init__()
+            self.base_model = base_model
+
+        def forward(self, left, right):
+            data = {"left": left, "right": right}
+            return self.base_model(data)["disp_pred"]  # single output
+    
+    # benchmark
+    model = model_trainer.model
+
+    if args.dist_mode:
+        model = model.module  # Get the underlying model if using DDP
+
+    model = WrappedModel(model).cuda().eval()
+
+    def set_eval_recursive(model):
+        for module in model.modules():
+            module.eval()
+
+    set_eval_recursive(model)
+
+
+    message = f"Process {os.getpid()}: [Rank {global_rank}/{WORLD_SIZE}]: Benchmarking model with shape [1, 3, 544, 960]"
+    logger.info(message)
+
+
+    shape = [1, 3, 544, 960]  # keep batchsize 1
+    message_1, message_2, flops, params = measure.measure(model, shape)
+    print(message_1)
+    print(message_2)
+
+    message_1, message_2, t_per_inference, throughput = measure.infer_time(model, shape) # keep batchsize 1
+    logger.info(message_1)
+    logger.info(message_2)
+
+    message = f"Now with TorchScript model"
+    logger.info(message)
+    message_3, throughput = measure.infer_time_torch_script(model, shape) # keep batchsize 1
+    logger.info(message_3)
+
+    output_file = os.path.join(args.output_dir, f"{args.extra_tag}.onnx")
+    measure.export_to_onnx(model = model, input_shape = shape, onnx_path = output_file, use_fp16=False, dynamic_batch = False, opset_version=11)
+
+
 
 
 # python -m debugpy --listen 0.0.0.0:5678 --wait-for-client ./tools/train.py
