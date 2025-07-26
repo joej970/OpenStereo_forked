@@ -11,3 +11,8 @@ thop
 matplotlib
 h5py
 protobuf>=3.20.0,<4.0.0
+onnx
+pycuda==2022.2 # manually added for TensorRT
+# note that TensorRT needs to be downloaded and python whl has to be installed manually 
+numpy==1.23.5 # for pycuda, using module load CUDA 11.8
+pandas

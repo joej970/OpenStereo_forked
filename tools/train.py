@@ -8,6 +8,7 @@ import tqdm
 from easydict import EasyDict
 import socket
 import measure
+from temporal_benchmarking import trt_benchmark
 
 import torch
 import torch.distributed as dist
@@ -346,8 +347,32 @@ def main():
     message_3, throughput = measure.infer_time_torch_script(model, shape) # keep batchsize 1
     logger.info(message_3)
 
-    output_file = os.path.join(args.output_dir, f"{args.extra_tag}.onnx")
-    measure.export_to_onnx(model = model, input_shape = shape, onnx_path = output_file, use_fp16=False, dynamic_batch = False, opset_version=11)
+    onnx_file = os.path.join(args.output_dir, f"{args.extra_tag}.onnx")
+    measure.export_to_onnx(model = model, input_shape = shape, onnx_path = onnx_file, use_fp16=False, dynamic_batch = False, opset_version=11)
+
+    from temporal_benchmarking import trt_benchmark
+    
+    print(f"Running TensorRT benchmark on ONNX file: {onnx_file}")
+    # csv_filename = f"trt_benchmark_{args.slurm_job_id}.csv"
+    csv_filename = os.path.join(args.output_dir, f"trt_benchmark.csv")
+    avg, p95, ips = trt_benchmark(onnx_file, csv_filename=csv_filename, fp16=True)
+
+    from analyze_trt_csv_profile import analyze_trt_csv_profile
+    print(f"Analyzing TensorRT CSV profile: {csv_filename}")
+    top_layers, stage_times = analyze_trt_csv_profile(csv_filename)
+    if tb_writer is not None:
+        tb_writer.add_scalar("TensorRT Benchmark/Inference_Time", t_per_inference, global_step=0)
+        tb_writer.add_scalar("TensorRT Benchmark/Throughput", throughput, global_step=0)
+        tb_writer.add_scalar("TensorRT Benchmark/Avg_Latency", avg, global_step=0)
+        tb_writer.add_scalar("TensorRT Benchmark/p95_Latency", p95, global_step=0)
+        tb_writer.add_scalar("TensorRT Benchmark/IPS", ips, global_step=0)
+        tb_writer.add_text("TensorRT benchmark/Top_Layers:", top_layers.to_string(), global_step=0)
+        tb_writer.add_text("TensorRT benchmark/Stage_Times:", stage_times.to_string(), global_step=0)
+
+    print(f"Process {os.getpid()}: [Rank {global_rank}/{WORLD_SIZE}]: Training completed. Exiting.")
+
+    if tb_writer is not None:
+        tb_writer.close()
 
 
 
