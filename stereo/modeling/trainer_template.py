@@ -44,6 +44,9 @@ class TrainerTemplate:
         if self.args.run_mode in ['train', 'eval']:
             self.eval_set, self.eval_loader, self.eval_sampler = self.build_eval_loader()
 
+        if hasattr(cfgs,'TESTING'):
+            self.test_set, self.test_loader, self.test_sampler = self.build_test_loader()
+
         if self.args.run_mode == 'train':
             self.train_set, self.train_loader, self.train_sampler = self.build_train_loader()
 
@@ -81,6 +84,17 @@ class TrainerTemplate:
             mode='evaluating')
         self.logger.info('Total samples for eval dataset: %d' % (len(eval_set)))
         return eval_set, eval_loader, eval_sampler
+
+    def build_test_loader(self):
+        test_set, test_loader, test_sampler = build_dataloader(
+            data_cfg=self.cfgs.DATA_CONFIG,
+            batch_size=self.cfgs.TESTING.BATCH_SIZE_PER_GPU,
+            is_dist=self.args.dist_mode,
+            workers=self.args.workers,
+            pin_memory=self.args.pin_memory,
+            mode='testing')
+        self.logger.info('Total samples for test dataset: %d' % (len(test_set)))
+        return test_set, test_loader, test_sampler
 
     def build_model(self, model):
         if self.cfgs.OPTIMIZATION.get('FREEZE_BN', False):
@@ -180,6 +194,13 @@ class TrainerTemplate:
         self.eval_one_epoch(current_epoch=current_epoch)
         if self.args.dist_mode:
             dist.barrier()
+
+    def test(self, current_epoch):
+        self.model.eval()
+        results = self.test_one_epoch(current_epoch=current_epoch)
+        if self.args.dist_mode:
+            dist.barrier()
+        return results
 
     def save_ckpt(self, current_epoch):
         if (current_epoch % self.cfgs.TRAINER.CKPT_SAVE_INTERVAL == 0 or current_epoch == self.total_epochs - 1) and self.global_rank == 0:
@@ -329,7 +350,6 @@ class TrainerTemplate:
             for k, v in data.items():
                 data[k] = v.to(local_rank) if torch.is_tensor(v) else v
 
-            # with torch.cuda.amp.autocast(enabled=self.cfgs.OPTIMIZATION.AMP):
             with torch.amp.autocast('cuda:%d' % local_rank, enabled=self.cfgs.OPTIMIZATION.AMP):
                 infer_start = time.time()
                 model_pred = self.model(data)
@@ -392,3 +412,93 @@ class TrainerTemplate:
             write_tensorboard(self.tb_writer, tb_info, current_epoch)
 
         self.logger.info(f"Epoch {current_epoch} metrics: {results}")
+
+
+    @torch.no_grad()
+    def test_one_epoch(self, current_epoch):
+        metric_func_dict = {
+            'epe': epe_metric,
+            'd1_all': d1_metric,
+            'thres_1': partial(threshold_metric, threshold=1),
+            'thres_2': partial(threshold_metric, threshold=2),
+            'thres_3': partial(threshold_metric, threshold=3),
+        }
+
+        testing_cfgs = self.cfgs.TESTING
+        local_rank = self.local_rank
+
+        epoch_metrics = {}
+        for k in testing_cfgs.METRIC:
+            epoch_metrics[k] = {'indexes': [], 'values': []}
+
+        for i, data in enumerate(self.test_loader):
+            for k, v in data.items():
+                data[k] = v.to(local_rank) if torch.is_tensor(v) else v
+
+            with torch.amp.autocast('cuda:%d' % local_rank, enabled=self.cfgs.OPTIMIZATION.AMP):
+                infer_start = time.time()
+                model_pred = self.model(data)
+                infer_time = time.time() - infer_start
+
+            disp_pred = model_pred['disp_pred']
+            disp_gt = data["disp"]
+            mask = (disp_gt < testing_cfgs.MAX_DISP) & (disp_gt > 0)
+            if 'occ_mask' in data and testing_cfgs.get('APPLY_OCC_MASK', False):
+                mask = mask & ~data['occ_mask'].to(torch.bool)
+
+            for m in testing_cfgs.METRIC:
+                if m not in metric_func_dict:
+                    raise ValueError("Unknown metric: {}".format(m))
+                metric_func = metric_func_dict[m]
+                res = metric_func(disp_pred.squeeze(1), disp_gt, mask)
+                epoch_metrics[m]['indexes'].extend(data['index'].tolist())
+                epoch_metrics[m]['values'].extend(res.tolist())
+
+            # if i % self.cfgs.TRAINER.LOGGER_ITER_INTERVAL == 0:
+            message = ('Testing Epoch:{:>2d} Iter:{:>4d}/{} InferTime: {:.2f}ms'
+                        ).format(current_epoch, i, len(self.test_loader), infer_time * 1000)
+            self.logger.info(message)
+
+            # check if it has the attribute TEST_VISUALIZATION
+            if hasattr(self.cfgs.TRAINER, 'TEST_VISUALIZATION'):
+                if self.cfgs.TRAINER.TEST_VISUALIZATION and self.tb_writer is not None:
+                    tb_info = {
+                        'image/test/image': torch.cat([data['left'][0], data['right'][0]], dim=1) / 256,
+                        'image/test/disp': color_map_tensorboard(data['disp'][0], model_pred['disp_pred'].squeeze(1)[0])
+                    }
+                    write_tensorboard(self.tb_writer, tb_info, current_epoch * len(self.test_loader) + i)
+
+        # gather from all gpus
+        if self.args.dist_mode:
+            dist.barrier()
+            self.logger.info("Start reduce metrics.")
+            for k in epoch_metrics.keys():
+                indexes = torch.tensor(epoch_metrics[k]["indexes"]).to(local_rank)
+                values = torch.tensor(epoch_metrics[k]["values"]).to(local_rank)
+                gathered_indexes = [torch.zeros_like(indexes) for _ in range(dist.get_world_size())]
+                gathered_values = [torch.zeros_like(values) for _ in range(dist.get_world_size())]
+                dist.all_gather(gathered_indexes, indexes)
+                dist.all_gather(gathered_values, values)
+                unique_dict = {}
+                for key, value in zip(torch.cat(gathered_indexes, dim=0).tolist(),
+                                      torch.cat(gathered_values, dim=0).tolist()):
+                    if key not in unique_dict:
+                        unique_dict[key] = value
+                epoch_metrics[k]["indexes"] = list(unique_dict.keys())
+                epoch_metrics[k]["values"] = list(unique_dict.values())
+
+        results = {}
+        for k in epoch_metrics.keys():
+            results[k] = torch.tensor(epoch_metrics[k]["values"]).mean()
+
+        if local_rank == 0 and self.tb_writer is not None:
+            tb_info = {}
+            for k, v in results.items():
+                tb_info[f'scalar/test/{k}'] = v.item()
+
+            write_tensorboard(self.tb_writer, tb_info, current_epoch)
+
+        self.logger.info(f"Testing: Epoch {current_epoch} metrics: {results}")
+
+        return results
+

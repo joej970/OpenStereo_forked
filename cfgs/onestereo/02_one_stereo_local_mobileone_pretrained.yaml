@@ -11,6 +11,11 @@ DATA_CONFIG:
             - { NAME: TransposeImage }
             - { NAME: ToTensor }
             - { NAME: NormalizeImage, MEAN: [ 0.485, 0.456, 0.406 ], STD: [ 0.229, 0.224, 0.225 ] }
+        TESTING:
+            - { NAME: RightTopPad, SIZE: [ 544, 960 ] }
+            - { NAME: TransposeImage }
+            - { NAME: ToTensor }
+            - { NAME: NormalizeImage, MEAN: [ 0.485, 0.456, 0.406 ], STD: [ 0.229, 0.224, 0.225 ] }
 
 MODEL:
     NAME: oneStereo
@@ -65,3 +70,4 @@ TRAINER:
     LOGGER_ITER_INTERVAL: 10
     TRAIN_VISUALIZATION: True
     EVAL_VISUALIZATION: True
+    TEST_VISUALIZATION: True

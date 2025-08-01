@@ -237,6 +237,34 @@ def export_to_onnx(model, input_shape, onnx_path,
     except Exception as e:
         raise RuntimeError(f"ONNX model validation failed: {e}")
 
+def format_dict_multiline(d, indent=0):
+        """
+        Format a dictionary with one key-value pair per line.
+        
+        Args:
+            d (dict): Dictionary to format
+            indent (int): Current indentation level
+        
+        Returns:
+            str: Formatted string representation
+        """
+        lines = []
+        indent_str = "  " * indent
+        
+        if isinstance(d, dict):
+            lines.append("{")
+            for key, value in d.items():
+                if isinstance(value, dict):
+                    lines.append(f"{indent_str}  '{key}': {format_dict_multiline(value, indent + 1)}")
+                elif isinstance(value, (list, tuple)):
+                    lines.append(f"{indent_str}  '{key}': {value}")
+                else:
+                    lines.append(f"{indent_str}  '{key}': {value}")
+            lines.append(f"{indent_str}}}")
+        else:
+            return str(d)
+        
+        return "\n".join(lines)
 
 if __name__ == '__main__':
     main()

@@ -8,7 +8,6 @@ import tqdm
 from easydict import EasyDict
 import socket
 import measure
-from temporal_benchmarking import trt_benchmark
 
 import torch
 import torch.distributed as dist
@@ -58,6 +57,7 @@ def parse_config():
     parser.add_argument('--batch_size', type=int, default=None, help='Override BATCH_SIZE_PER_GPU in config')
     parser.add_argument('--overide_epoch', type=int, default=None, help='Override EPOCH in config.')
     parser.add_argument('--slurm_job_id', type=str, default=None, help='Optional: SLURM job ID for logging')
+    parser.add_argument('--experiment_id', type=str, default=None, help='Optional: Experiment ID for logging')
 
 
     args = parser.parse_args()
@@ -177,24 +177,8 @@ def main():
         
         print(f"[Rank {LOCAL_RANK}/{WORLD_SIZE}] torch sees {torch.cuda.device_count()} GPUs")
 
-        # dist.barrier()
-        # if rank == 0:
-        #     print("✅ All ranks reached the barrier. DDP is working!", flush=True)
-
-        # local_rank = int(os.environ["LOCAL_RANK"])
-        # global_rank = int(os.environ["RANK"])
-        # world_size = int(os.environ["WORLD_SIZE"])
         print(f"Process {id}: [Rank {global_rank}/{WORLD_SIZE}({WORLD_SIZE})] Hello from {hostname}. Env vars: Local Rank: {local_rank}, Global Rank: {global_rank}, group rank: {group_rank}, world_size: {WORLD_RANK}, dist.rank: {dist.get_rank()}, dist.world_size: {dist.get_world_size()}")
 
-        # if local_rank != LOCAL_RANK:
-        #     raise ValueError(f"Local rank mismatch: expected {LOCAL_RANK}, got {local_rank}")
-        # if global_rank != WORLD_RANK:
-        #     raise ValueError(f"Global rank mismatch: expected {WORLD_RANK}, got {global_rank}")
-        
-        # torch.cuda.set_device(LOCAL_RANK)
-        
-
-        # print(f"[Rank {rank}/{world_size}] LOCAL_RANK: {LOCAL_RANK}, WORLD_RANK: {WORLD_RANK}, WORLD_SIZE: {WORLD_SIZE}")
         torch.backends.cuda.matmul.allow_tf32 = True
         torch.backends.cudnn.allow_tf32 = True
 
@@ -303,8 +287,27 @@ def main():
 
     print(f"Process {os.getpid()}: [Rank {global_rank}/{WORLD_SIZE}]: Training loop completed.")
 
+    experiment_summary = {
+        "experiment_ID": args.experiment_id,
+        "valid_accuracy_metrics": {},
+        "test_accuracy_metrics": {},
+        "test_accuracy_metrics_trt": {},
+        "parameter_count": {},
+        "inference_benchmark": {
+            "shape": None,  # Will be filled later
+            "pyTorch_inference": {},
+            "TorchScript_inference": {},
+            "Onnx_trt_inference": {}
+        }
+    }
+
+    # accuracy (EPE and other benchmarking)
+    print(f"Process {os.getpid()}: [Rank {global_rank}/{WORLD_SIZE}]: Starting testing phase.")
+    test_results = model_trainer.test(current_epoch)
+
+    experiment_summary["test_accuracy_metrics"] = test_results
     
-        # Convert model output to just the tensor (avoid dict)
+    # Convert model output to just the tensor (avoid dict)
     class WrappedModel(torch.nn.Module):
         def __init__(self, base_model):
             super().__init__()
@@ -314,7 +317,7 @@ def main():
             data = {"left": left, "right": right}
             return self.base_model(data)["disp_pred"]  # single output
     
-    # benchmark
+    # inference time benchmark
     model = model_trainer.model
 
     if args.dist_mode:
@@ -329,37 +332,72 @@ def main():
     set_eval_recursive(model)
 
 
-    message = f"Process {os.getpid()}: [Rank {global_rank}/{WORLD_SIZE}]: Benchmarking model with shape [1, 3, 544, 960]"
-    logger.info(message)
-
-
     shape = [1, 3, 544, 960]  # keep batchsize 1
+    message = f"Process {os.getpid()}: [Rank {global_rank}/{WORLD_SIZE}]: Benchmarking model with shape {shape}"
+    logger.info(message)
+    experiment_summary["inference_benchmark"]["shape"] = shape
+
+    print(f"Measuring pyTorch inference time")
+    logger.info(f"Measuring pyTorch inference time")
     message_1, message_2, flops, params = measure.measure(model, shape)
     print(message_1)
+    logger.info(message_1)
     print(message_2)
+    logger.info(message_2)
+    experiment_summary["parameter_count"]["num_params"] = params
+    experiment_summary["parameter_count"]["flops"] = flops
 
     message_1, message_2, t_per_inference, throughput = measure.infer_time(model, shape) # keep batchsize 1
     logger.info(message_1)
     logger.info(message_2)
+    print(message_1)
+    print(message_2)
+    experiment_summary["inference_benchmark"]["pyTorch_inference"] = {
+        "time_per_inference_ms": t_per_inference,
+        "throughput": throughput
+    }
 
     message = f"Now with TorchScript model"
     logger.info(message)
+    print(message)
     message_3, throughput = measure.infer_time_torch_script(model, shape) # keep batchsize 1
     logger.info(message_3)
+    print(message_3)
+    experiment_summary["inference_benchmark"]["TorchScript_inference"] = {
+        "time_per_inference_ms": 1000/throughput,
+        "throughput": throughput
+    }
 
     onnx_file = os.path.join(args.output_dir, f"{args.extra_tag}.onnx")
     measure.export_to_onnx(model = model, input_shape = shape, onnx_path = onnx_file, use_fp16=False, dynamic_batch = False, opset_version=11)
 
-    from temporal_benchmarking import trt_benchmark
+    from inference_benchmarking import trt_benchmark
     
     print(f"Running TensorRT benchmark on ONNX file: {onnx_file}")
+    logger.info(f"Running TensorRT benchmark on ONNX file: {onnx_file}")
     # csv_filename = f"trt_benchmark_{args.slurm_job_id}.csv"
     csv_filename = os.path.join(args.output_dir, f"trt_benchmark.csv")
-    avg, p95, ips = trt_benchmark(onnx_file, csv_filename=csv_filename, fp16=True)
+    avg, p95, ips, metrics = trt_benchmark(onnx_file, csv_filename=csv_filename, fp16=True, data_loader=model_trainer.test_loader, cfgs=cfgs)
 
-    from analyze_trt_csv_profile import analyze_trt_csv_profile
+
+    experiment_summary["inference_benchmark"]["Onnx_trt_inference"] = {
+        "avg_latency": avg,
+        "p95_latency": p95,
+        "inference": ips
+    }
+    experiment_summary["test_accuracy_metrics_trt"] = metrics
+
+
+    import analyze_trt_csv_profile as analyze_trt_csv_profile
+    
     print(f"Analyzing TensorRT CSV profile: {csv_filename}")
-    top_layers, stage_times = analyze_trt_csv_profile(csv_filename)
+    logger.info(f"Analyzing TensorRT CSV profile: {csv_filename}")
+    
+    # Convert to nested format
+    result = analyze_trt_csv_profile.convert_trt_csv_to_perfetto_json(csv_filename, f"{csv_filename[:-4]}_perfetto.json")
+    analyze_trt_csv_profile.save_nested_profile(result["nested_profile"], f"{csv_filename[:-4]}_nested.json")
+    
+    top_layers, stage_times = analyze_trt_csv_profile.analyze_trt_csv_profile(csv_filename)
     if tb_writer is not None:
         tb_writer.add_scalar("TensorRT Benchmark/Inference_Time", t_per_inference, global_step=0)
         tb_writer.add_scalar("TensorRT Benchmark/Throughput", throughput, global_step=0)
@@ -368,6 +406,15 @@ def main():
         tb_writer.add_scalar("TensorRT Benchmark/IPS", ips, global_step=0)
         tb_writer.add_text("TensorRT benchmark/Top_Layers:", top_layers.to_string(), global_step=0)
         tb_writer.add_text("TensorRT benchmark/Stage_Times:", stage_times.to_string(), global_step=0)
+
+
+    
+    formatted_string = measure.format_dict_multiline(experiment_summary)
+    print(formatted_string)
+
+    print(f"Experiment summary: {formatted_string}")
+    logger.info(f"Experiment summary: {formatted_string}")
+
 
     print(f"Process {os.getpid()}: [Rank {global_rank}/{WORLD_SIZE}]: Training completed. Exiting.")
 
