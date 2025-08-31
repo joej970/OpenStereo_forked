@@ -1,5 +1,6 @@
 DATA_CONFIG:
 
+
 MODEL:
     NAME: oneStereo
     MAX_DISP: 192
@@ -9,9 +10,9 @@ MODEL:
     FIND_UNUSED_PARAMETERS: false
     CKPT: -1
     PRETRAINED_MODEL: ''
-    BACKBONE: mobileone_s0_local
-    BACKBONE_PRETRAINED: False
-    BACKBONE_PATH: 
+    BACKBONE: mobilenetv3_small_100
+    BACKBONE_PRETRAINED: True
+    COST_VOLUME_TYPE: SIMPLE_3D
 
 OPTIMIZATION:
     FREEZE_BN: false
@@ -22,22 +23,20 @@ OPTIMIZATION:
 
     OPTIMIZER:
         NAME: AdamW
-        LR: &lr 0.0012
-        WEIGHT_DECAY: 1.0e-05
+        LR: &lr 0.0008
+        WEIGHT_DECAY: 1.0e-04
         EPS: 1.0e-08
 
     SCHEDULER:
-        NAME: OneCycleLR
-        MAX_LR: *lr
-        PCT_START: 0.3
-        ON_EPOCH: False
+        NAME: MultiStepLR
+        GAMMA: 0.5
+        MILESTONES: [30, 60, 80]  # Gradual decay
+        ON_EPOCH: True
+        ON_EPOCH: True
 
     CLIP_GRAD:
         TYPE: norm
         CLIP_VALUE: 1.0
-    # CLIP_GRAD:
-    #     TYPE: value
-    #     CLIP_VALUE: 0.1
 
 EVALUATOR:
     BATCH_SIZE_PER_GPU: *bs
@@ -58,4 +57,3 @@ TESTING:
         - thres_1
         - thres_2
         - thres_3
-

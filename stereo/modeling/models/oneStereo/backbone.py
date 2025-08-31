@@ -27,6 +27,7 @@ class FPNLayer(nn.Module):
         return feat
 
 
+
 class Backbone(nn.Module):
     def __init__(self, backbone='MobileNetv2', pretrained=None, checkpoint_path=None):
         super().__init__()

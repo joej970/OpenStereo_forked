@@ -1,5 +1,6 @@
 DATA_CONFIG:
 
+
 MODEL:
     NAME: oneStereo
     MAX_DISP: 192
@@ -9,9 +10,9 @@ MODEL:
     FIND_UNUSED_PARAMETERS: false
     CKPT: -1
     PRETRAINED_MODEL: ''
-    BACKBONE: mobileone_s0_local
-    BACKBONE_PRETRAINED: False
-    BACKBONE_PATH: 
+    BACKBONE: mobilenetv3_small_100
+    BACKBONE_PRETRAINED: True
+    COST_VOLUME_TYPE: SIMPLE_3D
 
 OPTIMIZATION:
     FREEZE_BN: false
@@ -29,7 +30,7 @@ OPTIMIZATION:
     SCHEDULER:
         NAME: OneCycleLR
         MAX_LR: *lr
-        PCT_START: 0.3
+        PCT_START: 0.1
         ON_EPOCH: False
 
     CLIP_GRAD:
@@ -58,4 +59,3 @@ TESTING:
         - thres_1
         - thres_2
         - thres_3
-

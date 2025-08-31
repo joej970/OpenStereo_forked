@@ -1,5 +1,6 @@
 DATA_CONFIG:
 
+
 MODEL:
     NAME: oneStereo
     MAX_DISP: 192
@@ -9,9 +10,8 @@ MODEL:
     FIND_UNUSED_PARAMETERS: false
     CKPT: -1
     PRETRAINED_MODEL: ''
-    BACKBONE: mobileone_s0_local
+    BACKBONE: mobilenetv3_large_100
     BACKBONE_PRETRAINED: False
-    BACKBONE_PATH: 
 
 OPTIMIZATION:
     FREEZE_BN: false
@@ -58,4 +58,3 @@ TESTING:
         - thres_1
         - thres_2
         - thres_3
-

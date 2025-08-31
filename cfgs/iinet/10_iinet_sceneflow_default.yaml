@@ -1,0 +1,137 @@
+DATA_CONFIG:
+
+
+MODEL:
+    NAME: IINet
+    MAX_DISP: &max_disp 192
+    MATCHING_FEATURE_DIMS : &bs 16
+    CV_ENCODER_TYPE : multi_scale_encoder
+    MATCHING_SCALE : 2
+    MULTISCALE : 2
+    DEPTH_DECODER_NAME : unet_pp
+    OUT_SCALE : 4
+    FEATURE_VOLUME_TYPE : ms_cost_volume
+    DISP_SCALE : 16
+    DOT_DIM : 1
+    MATCHING_ENCODER_TYPE : unet
+
+    REGRESSION_TOPK: 2
+    FIND_UNUSED_PARAMETERS: true
+    CKPT: -1
+    PRETRAINED_MODEL: ''
+
+OPTIMIZATION:
+    BATCH_SIZE_PER_GPU: *bs
+    FREEZE_BN: false
+    SYNC_BN: false
+    AMP: true
+
+    # OPTIMIZER:
+    #     NAME: AdamW
+    #     LR: &lr 0.0005
+    #     WEIGHT_DECAY: 1.0e-05
+    #     EPS: 1.0e-08
+
+    OPTIMIZER:
+        NAME: AdamW
+        LR: &lr 0.0001  # Conservative base LR
+        WEIGHT_DECAY: 1.0e-04
+        EPS: 1.0e-08
+
+    SCHEDULER:
+        NAME: OneCycleLR
+        MAX_LR: 0.0003  # Much lower max LR than before
+        PCT_START: 0.5  # Longer warmup (50% of training)
+        ON_EPOCH: False
+
+    # SCHEDULER:
+    #     NAME: OneCycleLR
+    #     MAX_LR: 0.002
+    #     PCT_START: 0.3
+    #     ON_EPOCH: False
+
+    # Alternative schedulers (comment out OneCycleLR above to use):
+    # SCHEDULER:
+    #     NAME: MultiStepLR
+    #     GAMMA: 0.5
+    #     MILESTONES: [8, 15, 25]
+    #     ON_EPOCH: True
+    
+    # SCHEDULER:
+    #     NAME: CosineAnnealingLR
+    #     T_max: 30
+    #     ETA_MIN: 1.0e-06
+    #     ON_EPOCH: True
+
+    # old:
+      # NUM_EPOCHS: 13
+
+    # # OPTIMIZER:
+    # #     NAME: AdamW
+    # #     LR: &lr 0.001
+    # #     WEIGHT_DECAY: 1.0e-05
+    # #     EPS: 1.0e-08
+
+    # # SCHEDULER:
+    # #     NAME: OneCycleLR
+    # #     MAX_LR: *lr
+    # #     PCT_START: 0.01
+    # #     ON_EPOCH: False
+
+    # OPTIMIZER:
+    #     NAME: AdamW
+    #     LR: 0.001
+    #     WEIGHT_DECAY: 0
+
+
+    # SCHEDULER:
+    #     NAME: MultiStepLR
+    #     GAMMA: 0.1
+    #     MILESTONES: [ 10 ]
+    #     ON_EPOCH: True
+
+EVALUATOR:
+    BATCH_SIZE_PER_GPU: 10
+    MAX_DISP: *max_disp
+    METRIC:
+        - d1_all
+        - epe
+        - thres_1
+        - thres_2
+        - thres_3
+
+TRAINER:
+    PRE_TRAIN: true
+
+    # EVAL_INTERVAL: 5
+    # CKPT_SAVE_INTERVAL: 1
+    # MAX_CKPT_SAVE_NUM: 30
+    # LOGGER_ITER_INTERVAL: 10
+    # TRAIN_VISUALIZATION: False
+    # EVAL_VISUALIZATION: True
+    
+    UNCER_ONLY : True
+    LOSS_WEIGHT:
+        l1:
+            - 5
+            - 2.5
+            - 1.25
+            - 0.6
+        grad:
+            - 1.0
+            - 1.0
+            - 0.5
+            - 0.5
+        normal: 2.5
+        focal: 1.0
+
+
+TESTING:
+    BATCH_SIZE_PER_GPU: *bs
+    MAX_DISP: 192
+    METRIC:
+        - d1_all
+        - epe
+        - thres_1
+        - thres_2
+        - thres_3

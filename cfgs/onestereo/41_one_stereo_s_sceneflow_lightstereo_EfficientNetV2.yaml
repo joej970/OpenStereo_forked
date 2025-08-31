@@ -1,5 +1,6 @@
 DATA_CONFIG:
 
+
 MODEL:
     NAME: oneStereo
     MAX_DISP: 192
@@ -9,15 +10,14 @@ MODEL:
     FIND_UNUSED_PARAMETERS: false
     CKPT: -1
     PRETRAINED_MODEL: ''
-    BACKBONE: mobileone_s0_local
-    BACKBONE_PRETRAINED: False
-    BACKBONE_PATH: 
+    BACKBONE: EfficientNetv2
+    BACKBONE_PRETRAINED: True
 
 OPTIMIZATION:
     FREEZE_BN: false
     SYNC_BN: true
     AMP: true
-    BATCH_SIZE_PER_GPU: &bs 32
+    BATCH_SIZE_PER_GPU: &bs 24
     NUM_EPOCHS: 90
 
     OPTIMIZER:
@@ -58,4 +58,3 @@ TESTING:
         - thres_1
         - thres_2
         - thres_3
-
