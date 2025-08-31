@@ -15,7 +15,7 @@ from .models.lightstereo.trainer import Trainer as LightStereoTrainer
 from .models.stereobase.trainer import Trainer as StereoBaseGRUTrainer
 from .models.myTestModel.trainer import Trainer as myTestModel
 from .models.oneStereo.trainer import Trainer as oneStereoTrainer
-# from .models.iinet.trainer import Trainer as IINetTrainer
+from .models.iinet.trainer import Trainer as IINetTrainer
 
 # If you want to train/eval NMRF-Stereo, you need to build deformable attention and superpixel-guided disparity downsample operator: 'cd stereo/modeling/models/nmrf/ops && sh make.sh && cd ..'
 # from .models.nmrf.trainer import Trainer as NMRFTrainer  
@@ -38,11 +38,14 @@ __all__ = {
     'StereoBaseGRU': StereoBaseGRUTrainer,
     'myTestModel': myTestModel,
     'oneStereo': oneStereoTrainer,
-    # 'IInet': IINetTrainer,
+    'IINet': IINetTrainer,
     # 'NMRF': NMRFTrainer
 }
 
 
-def build_trainer(args, cfgs, local_rank, global_rank, logger, tb_writer, enable_profiler=False):
-    trainer = __all__[cfgs.MODEL.NAME](args, cfgs, local_rank, global_rank, logger, tb_writer, enable_profiler=enable_profiler)
+def build_trainer(args, cfgs, local_rank, global_rank, logger, tb_writer):
+    trainer = __all__[cfgs.MODEL.NAME](args, cfgs, local_rank, global_rank, logger, tb_writer)
     return trainer
+# def build_trainer(args, cfgs, local_rank, global_rank, logger, tb_writer, enable_profiler=False):
+#     trainer = __all__[cfgs.MODEL.NAME](args, cfgs, local_rank, global_rank, logger, tb_writer, enable_profiler=enable_profiler)
+#     return trainer

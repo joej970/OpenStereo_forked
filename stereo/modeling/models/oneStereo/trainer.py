@@ -10,6 +10,7 @@ __all__ = {
 
 
 class Trainer(TrainerTemplate):
-    def __init__(self, args, cfgs, local_rank, global_rank, logger, tb_writer, enable_profiler=False):
+    def __init__(self, args, cfgs, local_rank, global_rank, logger, tb_writer):
         model = __all__[cfgs.MODEL.NAME](cfgs.MODEL)
-        super().__init__(args, cfgs, local_rank, global_rank, logger, tb_writer, model, enable_profiler=enable_profiler)
+        super().__init__(args, cfgs, local_rank, global_rank, logger, tb_writer, model)
+

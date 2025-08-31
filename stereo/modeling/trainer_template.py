@@ -18,16 +18,19 @@ from stereo.evaluation.metric_per_image import epe_metric, d1_metric, threshold_
 
 
 class TrainerTemplate:
-    def __init__(self, args, cfgs, local_rank, global_rank, logger, tb_writer, model, enable_profiler=False):
+    def __init__(self, args, cfgs, local_rank, global_rank, logger, tb_writer, model):
         self.args = args
         self.cfgs = cfgs
         self.local_rank = local_rank
         self.global_rank = global_rank
         self.logger = logger
         self.tb_writer = tb_writer
-        self.enable_profiler = enable_profiler
+        self.enable_profiler = True
 
         self.model = self.build_model(model)
+
+        self.best_epe = 1e6
+        self.eval_epes = {}
 
         # --- Add this block to log model statistics ---
         if self.global_rank == 0:
@@ -215,6 +218,12 @@ class TrainerTemplate:
         if self.args.dist_mode:
             dist.barrier()
 
+    def save_best_pth(self, current_epoch):
+        if self.global_rank == 0:
+            best_pth_name = os.path.join(self.args.ckpt_dir, 'best_model.pth')
+            common_utils.save_checkpoint(self.model, self.optimizer, self.scheduler, self.scaler,
+                                         self.args.dist_mode, current_epoch, filename=best_pth_name)
+
     def export_full_pytorch_model(model, location, name, example_input):
         """
         Exports the full PyTorch model as a TorchScript file.
@@ -237,6 +246,10 @@ class TrainerTemplate:
         logger_iter_interval = self.cfgs.TRAINER.LOGGER_ITER_INTERVAL
         total_loss = 0.0
         loss_func = self.model.module.get_loss if self.args.dist_mode else self.model.get_loss
+
+        print()
+        print(f"Training epoch: {current_epoch}")
+        print()
 
         # profiler
         prof = None
@@ -268,6 +281,7 @@ class TrainerTemplate:
 
             # with torch.cuda.amp.autocast(enabled=self.cfgs.OPTIMIZATION.AMP):
             with torch.amp.autocast('cuda:%d' % self.local_rank, enabled=self.cfgs.OPTIMIZATION.AMP):
+                data['iteration'] = i
                 model_pred = self.model(data)
                 infer_timer = time.time()
                 loss, tb_info = loss_func(model_pred, data)
@@ -412,6 +426,12 @@ class TrainerTemplate:
             write_tensorboard(self.tb_writer, tb_info, current_epoch)
 
         self.logger.info(f"Epoch {current_epoch} metrics: {results}")
+        self.eval_epes[current_epoch] = results['epe'].item()
+        if results['epe'] < self.best_epe:
+            self.best_epe = results['epe']
+            self.logger.info(f"New best EPE: {self.best_epe:.4f} at epoch {current_epoch}")
+            # self.save_best_pth(current_epoch) # will do this in the main train
+        return results
 
 
     @torch.no_grad()

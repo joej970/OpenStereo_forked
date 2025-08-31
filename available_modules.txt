@@ -1,0 +1,764 @@
+
+--------------------------------------------------------------------------------------------------- /cvmfs/sling.si/modules/el7/modules/all ---------------------------------------------------------------------------------------------------
+   ACTC/1.1-GCCcore-10.2.0                                           NVHPC/21.5                                                gnuplot/5.2.8-GCCcore-9.3.0
+   AMD-uProf/5.0.1479                                                NVHPC/21.11                                               gnuplot/5.4.2-GCCcore-10.3.0
+   AMOS/3.1.0-foss-2021b                                             NVHPC/22.7-CUDA-11.7.0                                    gnuplot/5.4.2-GCCcore-11.2.0
+   ANTLR/2.7.7-GCCcore-10.3.0-Java-11                                NVHPC/23.7-CUDA-12.1.1                                    gnuplot/5.4.4-GCCcore-11.3.0
+   ANTLR/2.7.7-GCCcore-11.3.0-Java-11                      (D)       NVHPC/24.1-CUDA-12.3.0                                    gnuplot/5.4.8-GCCcore-12.3.0                         (D)
+   AOCC/2.3.0-GCCcore-9.3.0                                          NVHPC/25.1-CUDA-12.6.0                             (D)    gobff/2021a
+   AOCC/3.0.0-GCCcore-10.2.0                                         NiBabel/3.2.1-fosscuda-2020b                              gompi/2018a
+   AOCC/4.0.0-GCCcore-12.3.0                               (D)       Ninja/1.9.0-GCCcore-8.3.0                                 gompi/2018b
+   ASE/3.21.1-foss-2020b                                             Ninja/1.10.0-GCCcore-9.3.0                                gompi/2019a
+   ASE/3.22.0-foss-2020b                                             Ninja/1.10.1-GCCcore-10.2.0                               gompi/2019b
+   ASE/3.22.1-foss-2021b                                             Ninja/1.10.2-GCCcore-10.3.0                               gompi/2020a
+   ASE/3.22.1-foss-2022a                                             Ninja/1.10.2-GCCcore-11.2.0                               gompi/2020b
+   ASE/3.22.1-gfbf-2023a                                   (D)       Ninja/1.10.2-GCCcore-11.3.0                               gompi/2021a
+   ATK/2.36.0-GCCcore-10.2.0                                         Ninja/1.11.1-GCCcore-12.2.0                               gompi/2021b
+   ATK/2.36.0-GCCcore-11.2.0                                         Ninja/1.11.1-GCCcore-12.3.0                               gompi/2022a
+   ATK/2.38.0-GCCcore-12.2.0                               (D)       Ninja/1.11.1-GCCcore-13.2.0                               gompi/2022b
+   Abseil/20230125.2-GCCcore-12.2.0                                  Ninja/1.12.1-GCCcore-13.3.0                        (D)    gompi/2023a
+   AlphaFold/2.1.2-foss-2021a                                        OPARI2/2.0.7-GCCcore-11.3.0                               gompi/2023b
+   AlphaFold/2.2.2-foss-2021a-CUDA-11.3.1                            OPARI2/2.0.7-GCCcore-12.2.0                               gompi/2024a                                          (D)
+   AlphaFold/2.3.0-foss-2021b-CUDA-11.4.1                            OPARI2/2.0.8-GCCcore-13.2.0                               gompic/2019a
+   AlphaFold/2.3.4-foss-2022a-ColabFold                              OPARI2/2.0.8-GCCcore-13.3.0                        (D)    gompic/2019b
+   AlphaFold/2.3.4-foss-2022a-CUDA-11.7.0-ColabFold        (D)       ORCA/4.2.1-gompi-2019b                                    gompic/2020b                                         (D)
+   AlphaPulldown/2.0.0b4-foss-2022a-CUDA-11.7.0                      ORCA/6.0.0-gompi-2023a                             (D)    googletest/1.11.0-GCCcore-11.2.0
+   Amber/22.0-foss-2021b-AmberTools-22.3-CUDA-11.4.1                 OTF2/3.0.2-GCCcore-11.3.0                                 googletest/1.12.1-GCCcore-12.2.0
+   Amber/22.0-foss-2021b-AmberTools-22.3                   (D)       OTF2/3.0.3-GCCcore-12.2.0                                 googletest/1.13.0-GCCcore-12.3.0                     (D)
+   Anaconda3/2020.11                                                 OTF2/3.0.3-GCCcore-13.2.0                                 gperf/3.1-GCCcore-7.3.0
+   Anaconda3/2021.11                                                 OTF2/3.0.3-GCCcore-13.3.0                          (D)    gperf/3.1-GCCcore-8.3.0
+   Anaconda3/2022.05                                                 OpenBLAS/0.3.1-GCC-7.3.0-2.30                             gperf/3.1-GCCcore-9.3.0
+   Anaconda3/2023.07-2                                     (D)       OpenBLAS/0.3.5-GCC-8.2.0-2.31.1                           gperf/3.1-GCCcore-10.2.0
+   Armadillo/11.4.3-foss-2022b                                       OpenBLAS/0.3.7-GCC-8.3.0                                  gperf/3.1-GCCcore-10.3.0
+   Armadillo/12.6.2-foss-2023a                             (D)       OpenBLAS/0.3.9-GCC-9.3.0                                  gperf/3.1-GCCcore-11.2.0
+   Arrow/6.0.0-foss-2021b                                            OpenBLAS/0.3.12-GCC-10.2.0                                gperf/3.1-GCCcore-11.3.0
+   Autoconf/2.69-GCCcore-6.4.0                                       OpenBLAS/0.3.15-GCC-10.3.0                                gperf/3.1-GCCcore-12.2.0
+   Autoconf/2.69-GCCcore-7.3.0                                       OpenBLAS/0.3.18-GCC-11.2.0                                gperf/3.1-GCCcore-12.3.0                             (D)
+   Autoconf/2.69-GCCcore-8.2.0                                       OpenBLAS/0.3.20-GCC-11.3.0                                graphite2/1.3.14-GCCcore-11.2.0
+   Autoconf/2.69-GCCcore-8.3.0                                       OpenBLAS/0.3.21-GCC-12.2.0                                graphite2/1.3.14-GCCcore-11.3.0
+   Autoconf/2.69-GCCcore-9.3.0                                       OpenBLAS/0.3.23-GCC-12.3.0                                graphite2/1.3.14-GCCcore-12.3.0                      (D)
+   Autoconf/2.69-GCCcore-10.2.0                                      OpenBLAS/0.3.24-GCC-13.2.0                                groff/1.22.4-GCCcore-9.3.0
+   Autoconf/2.71-GCCcore-10.3.0                                      OpenBLAS/0.3.27-GCC-13.3.0                         (D)    groff/1.22.4-GCCcore-10.3.0
+   Autoconf/2.71-GCCcore-11.2.0                                      OpenCV/4.5.5-foss-2021b-contrib                           groff/1.22.4-GCCcore-11.2.0
+   Autoconf/2.71-GCCcore-11.3.0                                      OpenEXR/2.4.0-GCCcore-8.3.0                               groff/1.22.4-GCCcore-11.3.0
+   Autoconf/2.71-GCCcore-12.2.0                                      OpenEXR/3.1.1-GCCcore-11.2.0                              groff/1.22.4-GCCcore-12.2.0
+   Autoconf/2.71-GCCcore-12.3.0                                      OpenEXR/3.1.5-GCCcore-12.2.0                              groff/1.22.4-GCCcore-12.3.0                          (D)
+   Autoconf/2.71-GCCcore-13.2.0                                      OpenEXR/3.1.7-GCCcore-12.3.0                       (D)    gzip/1.10-GCCcore-9.3.0
+   Autoconf/2.72-GCCcore-13.3.0                                      OpenFOAM/v2106-foss-2021a                                 gzip/1.10-GCCcore-10.2.0
+   Autoconf/2.72-GCCcore-14.2.0                            (D)       OpenFOAM/v2206-foss-2022a                                 gzip/1.10-GCCcore-10.3.0
+   Automake/1.15.1-GCCcore-6.4.0                                     OpenFOAM/8-foss-2020a                                     gzip/1.10-GCCcore-11.2.0
+   Automake/1.15.1-GCCcore-8.3.0                                     OpenFOAM/10-foss-2022a                                    gzip/1.12-GCCcore-11.3.0
+   Automake/1.16.1-GCCcore-7.3.0                                     OpenFOAM/11-foss-2023a                             (D)    gzip/1.12-GCCcore-12.2.0
+   Automake/1.16.1-GCCcore-8.2.0                                     OpenImageIO/2.0.12-gompi-2019b                            gzip/1.12-GCCcore-12.3.0
+   Automake/1.16.1-GCCcore-8.3.0                                     OpenJPEG/2.5.0-GCCcore-12.2.0                             gzip/1.13-GCCcore-13.2.0
+   Automake/1.16.1-GCCcore-9.3.0                                     OpenJPEG/2.5.0-GCCcore-12.3.0                      (D)    gzip/1.13-GCCcore-13.3.0                             (D)
+   Automake/1.16.2-GCCcore-10.2.0                                    OpenMM/7.5.1-foss-2021a-DeepMind-patch                    h5py/2.9.0-fosscuda-2019a
+   Automake/1.16.3-GCCcore-10.3.0                                    OpenMM/7.5.1-foss-2021b-DeepMind-patch                    h5py/2.10.0-foss-2020a-Python-3.8.2
+   Automake/1.16.4-GCCcore-11.2.0                                    OpenMM/8.0.0-foss-2022a-CUDA-11.7.0                       h5py/2.10.0-fosscuda-2019b-Python-3.7.4
+   Automake/1.16.5-GCCcore-11.3.0                                    OpenMM/8.0.0-foss-2022a                            (D)    h5py/3.1.0-fosscuda-2020b
+   Automake/1.16.5-GCCcore-12.2.0                                    OpenMPI/4.0.0-GCC-8.2.0-2.31.1                            h5py/3.2.1-foss-2021a
+   Automake/1.16.5-GCCcore-12.3.0                                    OpenMPI/4.0.3-GCC-9.3.0                                   h5py/3.6.0-foss-2021b
+   Automake/1.16.5-GCCcore-13.2.0                                    OpenMPI/4.0.5-GCC-10.2.0                                  h5py/3.7.0-foss-2022a                                (D)
+   Automake/1.16.5-GCCcore-13.3.0                                    OpenMPI/4.0.5-gcccuda-2020b                               hatchling/1.18.0-GCCcore-12.3.0
+   Automake/1.17-GCCcore-14.2.0                            (D)       OpenMPI/4.0.5-NVHPC-21.2-CUDA-11.2.1                      hatchling/1.18.0-GCCcore-13.2.0
+   Autotools/20170619-GCCcore-6.4.0                                  OpenMPI/4.1.0-GCC-10.2.0                                  hatchling/1.24.2-GCCcore-13.3.0                      (D)
+   Autotools/20180311-GCCcore-7.3.0                                  OpenMPI/4.1.1-GCC-10.3.0                                  hdf5storage/0.1.15-fosscuda-2019a
+   Autotools/20180311-GCCcore-8.2.0                                  OpenMPI/4.1.1-GCC-11.2.0                                  help2man/1.47.4-GCCcore-6.4.0
+   Autotools/20180311-GCCcore-8.3.0                                  OpenMPI/4.1.2-GCC-11.2.0                                  help2man/1.47.4-GCCcore-7.3.0
+   Autotools/20180311-GCCcore-9.3.0                                  OpenMPI/4.1.3-GCC-10.3.0                                  help2man/1.47.4
+   Autotools/20200321-GCCcore-10.2.0                                 OpenMPI/4.1.3-GCC-11.2.0                                  help2man/1.47.7-GCCcore-8.2.0
+   Autotools/20210128-GCCcore-10.3.0                                 OpenMPI/4.1.4-GCC-11.3.0                                  help2man/1.47.8-GCCcore-8.3.0
+   Autotools/20210726-GCCcore-11.2.0                                 OpenMPI/4.1.4-GCC-12.2.0                                  help2man/1.47.12-GCCcore-9.3.0
+   Autotools/20220317-GCCcore-11.3.0                                 OpenMPI/4.1.4-NVHPC-22.7-CUDA-11.7.0                      help2man/1.47.16-GCCcore-10.2.0
+   Autotools/20220317-GCCcore-12.2.0                                 OpenMPI/4.1.5-GCC-12.3.0                                  help2man/1.48.3-GCCcore-10.3.0
+   Autotools/20220317-GCCcore-12.3.0                                 OpenMPI/4.1.6-GCC-13.2.0                           (D)    help2man/1.48.3-GCCcore-11.2.0
+   Autotools/20220317-GCCcore-13.2.0                                 OpenMPI/5.0.3-GCC-13.3.0                                  help2man/1.49.2-GCCcore-11.3.0
+   Autotools/20231222-GCCcore-13.3.0                                 OpenPGM/5.2.122-GCCcore-11.3.0                            help2man/1.49.2-GCCcore-12.2.0
+   Autotools/20240712-GCCcore-14.2.0                       (D)       OpenSSL/1.1                                               help2man/1.49.3-GCCcore-12.3.0
+   BLAST+/2.12.0-gompi-2021b                                         OpenSSL/3                                          (D)    help2man/1.49.3-GCCcore-13.2.0
+   BLAST+/2.14.0-gompi-2022b                               (D)       OptiX/6.5.0                                               help2man/1.49.3-GCCcore-13.3.0
+   BLIS/0.8.1-GCC-10.3.0                                             PAPI/6.0.0-GCCcore-10.2.0                                 help2man/1.49.3-GCCcore-14.2.0                       (D)
+   BLIS/0.8.1-GCC-11.2.0                                             PAPI/6.0.0.1-GCCcore-11.2.0                               hipSYCL/0.9.1-gcccuda-2020b
+   BLIS/0.8.1-GCCcore-10.3.0                                         PAPI/7.0.0-GCCcore-11.3.0                                 hwloc/1.11.7-GCCcore-6.4.0
+   BLIS/0.9.0-GCC-11.3.0                                             PAPI/7.0.1-GCCcore-12.2.0                                 hwloc/1.11.8-GCCcore-6.4.0
+   BLIS/0.9.0-GCC-12.2.0                                             PAPI/7.1.0-GCCcore-11.3.0                                 hwloc/1.11.10-GCCcore-7.3.0
+   BLIS/0.9.0-GCC-12.3.0                                             PAPI/7.1.0-GCCcore-12.3.0                                 hwloc/1.11.11-GCCcore-8.2.0
+   BLIS/0.9.0-GCC-13.2.0                                             PAPI/7.1.0-GCCcore-13.2.0                                 hwloc/1.11.12-GCCcore-8.3.0
+   BLIS/1.0-GCC-13.3.0                                     (D)       PAPI/7.1.0-GCCcore-13.3.0                          (D)    hwloc/2.0.2-GCCcore-8.2.0
+   BWA/0.7.17-GCCcore-11.2.0                                         PCMSolver/1.2.3-gompi-2019a-Python-3.7.2                  hwloc/2.2.0-GCCcore-9.3.0
+   Bazel/3.4.1-GCCcore-8.3.0                                         PCRE/8.41-GCCcore-7.3.0                                   hwloc/2.2.0-GCCcore-10.2.0
+   Bazel/3.7.1-GCCcore-8.3.0                                         PCRE/8.43-GCCcore-8.3.0                                   hwloc/2.4.1-GCCcore-10.3.0
+   Bazel/3.7.2-GCCcore-10.2.0                                        PCRE/8.44-GCCcore-9.3.0                                   hwloc/2.5.0-GCCcore-11.2.0
+   Bazel/3.7.2-GCCcore-10.3.0                                        PCRE/8.44-GCCcore-10.2.0                                  hwloc/2.7.1-GCCcore-11.3.0
+   Bazel/3.7.2-GCCcore-11.2.0                                        PCRE/8.44-GCCcore-10.3.0                                  hwloc/2.8.0-GCCcore-12.2.0
+   Bazel/5.1.1-GCCcore-11.3.0                              (D)       PCRE/8.45-GCCcore-11.2.0                                  hwloc/2.9.1-GCCcore-12.3.0
+   BeautifulSoup/4.10.0-GCCcore-11.3.0                               PCRE/8.45-GCCcore-11.3.0                                  hwloc/2.9.2-GCCcore-13.2.0
+   Biopython/1.79-foss-2021a                                         PCRE/8.45-GCCcore-12.2.0                                  hwloc/2.10.0-GCCcore-13.3.0                          (D)
+   Biopython/1.79-foss-2021b                                         PCRE/8.45-GCCcore-12.3.0                           (D)    hypothesis/5.41.2-GCCcore-10.2.0
+   Biopython/1.79-foss-2022a                               (D)       PCRE2/10.34-GCCcore-9.3.0                                 hypothesis/5.41.5-GCCcore-10.2.0
+   Bison/3.0.4-GCCcore-6.4.0                                         PCRE2/10.36-GCCcore-10.3.0                                hypothesis/6.13.1-GCCcore-10.3.0
+   Bison/3.0.4-GCCcore-7.3.0                                         PCRE2/10.37-GCCcore-11.2.0                                hypothesis/6.14.6-GCCcore-11.2.0
+   Bison/3.0.4                                                       PCRE2/10.40-GCCcore-11.3.0                                hypothesis/6.46.7-GCCcore-11.3.0
+   Bison/3.0.5-GCCcore-6.4.0                                         PCRE2/10.40-GCCcore-12.2.0                                hypothesis/6.68.2-GCCcore-12.2.0
+   Bison/3.0.5-GCCcore-7.3.0                                         PCRE2/10.42-GCCcore-12.3.0                         (D)    hypothesis/6.82.0-GCCcore-12.3.0
+   Bison/3.0.5-GCCcore-8.2.0                                         PDT/3.25.1-GCCcore-11.3.0                                 hypothesis/6.90.0-GCCcore-13.2.0                     (D)
+   Bison/3.0.5                                                       PDT/3.25.1-GCCcore-12.2.0                                 iimpi/2021a
+   Bison/3.3.2-GCCcore-8.3.0                                         PDT/3.25.2-GCCcore-13.2.0                                 iimpi/2021b
+   Bison/3.3.2                                                       PDT/3.25.2-GCCcore-13.3.0                          (D)    iimpi/2022a
+   Bison/3.5.3-GCCcore-9.3.0                                         PETSc/3.15.1-foss-2021a                                   iimpi/2022b                                          (D)
+   Bison/3.5.3                                                       PETSc/3.18.4-intel-2021b                                  imkl-FFTW/2021.4.0-iimpi-2021b
+   Bison/3.7.1-GCCcore-10.2.0                                        PETSc/3.20.3-foss-2023a                            (D)    imkl-FFTW/2022.1.0-iimpi-2022a
+   Bison/3.7.1                                                       PGI/19.4-GCC-8.2.0-2.31.1                                 imkl-FFTW/2022.2.1-iimpi-2022b                       (D)
+   Bison/3.7.6-GCCcore-10.3.0                                        PLUMED/2.6.0-foss-2020a-Python-3.8.2                      imkl/2021.4.0
+   Bison/3.7.6-GCCcore-11.2.0                                        PLUMED/2.6.2-foss-2020b                                   imkl/2022.1.0
+   Bison/3.7.6                                                       PLUMED/2.7.2-foss-2021a                                   imkl/2022.2.1
+   Bison/3.8.2-GCCcore-11.3.0                                        PLUMED/2.7.3-foss-2021b                                   imkl/2024.2.0                                        (D)
+   Bison/3.8.2-GCCcore-12.2.0                                        PLUMED/2.8.0-foss-2021b                                   impi/2021.2.0-intel-compilers-2021.2.0
+   Bison/3.8.2-GCCcore-12.3.0                                        PLUMED/2.9.0-foss-2023a                            (D)    impi/2021.4.0-intel-compilers-2021.4.0
+   Bison/3.8.2-GCCcore-13.2.0                                        PMIx/3.1.5-GCCcore-9.3.0                                  impi/2021.6.0-intel-compilers-2022.1.0
+   Bison/3.8.2-GCCcore-13.3.0                                        PMIx/3.1.5-GCCcore-10.2.0                                 impi/2021.7.1-intel-compilers-2022.2.1               (D)
+   Bison/3.8.2-GCCcore-14.2.0                                        PMIx/3.2.3-GCCcore-10.3.0                                 intel-compilers/2021.2.0
+   Bison/3.8.2                                             (D)       PMIx/4.1.0-GCCcore-11.2.0                                 intel-compilers/2021.4.0
+   Blender/2.81-foss-2019b-Python-3.7.4                              PMIx/4.1.2-GCCcore-11.3.0                                 intel-compilers/2022.1.0
+   Boost/1.67.0-foss-2018b                                           PMIx/4.2.2-GCCcore-12.2.0                                 intel-compilers/2022.2.1                             (D)
+   Boost/1.70.0-gompi-2019a                                          PMIx/4.2.4-GCCcore-12.3.0                                 intel/2021b
+   Boost/1.71.0-gompi-2019b                                          PMIx/4.2.6-GCCcore-13.2.0                                 intel/2022a
+   Boost/1.71.0-gompic-2019b                                         PMIx/5.0.2-GCCcore-13.3.0                          (D)    intel/2022b                                          (D)
+   Boost/1.72.0-gompi-2020a                                          POV-Ray/3.7.0.8-GCC-10.2.0                                intltool/0.51.0-GCCcore-6.4.0-Perl-5.26.0
+   Boost/1.74.0-GCC-10.2.0                                           PRINSEQ/0.20.4-foss-2021b-Perl-5.34.0                     intltool/0.51.0-GCCcore-7.3.0-Perl-5.28.0
+   Boost/1.76.0-GCC-10.3.0                                           PROJ/8.1.0-GCCcore-11.2.0                                 intltool/0.51.0-GCCcore-8.3.0
+   Boost/1.77.0-GCC-11.2.0                                           PROJ/9.1.1-GCCcore-12.2.0                                 intltool/0.51.0-GCCcore-9.3.0
+   Boost/1.77.0-intel-compilers-2021.4.0                             PROJ/9.2.0-GCCcore-12.3.0                          (D)    intltool/0.51.0-GCCcore-10.2.0
+   Boost/1.79.0-GCC-11.3.0                                           PRRTE/3.0.5-GCCcore-13.3.0                                intltool/0.51.0-GCCcore-10.3.0
+   Boost/1.81.0-GCC-12.2.0                                           PSI4/1.3.1-foss-2019a-Python-3.7.2                        intltool/0.51.0-GCCcore-11.2.0
+   Boost/1.82.0-GCC-12.3.0                                           Pango/1.44.7-GCCcore-9.3.0                                intltool/0.51.0-GCCcore-11.3.0
+   Boost/1.83.0-GCC-13.2.0                                 (D)       Pango/1.47.0-GCCcore-10.2.0                               intltool/0.51.0-GCCcore-12.2.0
+   Bowtie2/2.4.4-GCC-11.2.0                                          Pango/1.48.5-GCCcore-10.3.0                               intltool/0.51.0-GCCcore-12.3.0                       (D)
+   Brotli/1.0.9-GCCcore-10.3.0                                       Pango/1.48.8-GCCcore-11.2.0                               jax/0.2.19-fosscuda-2020b
+   Brotli/1.0.9-GCCcore-11.2.0                                       Pango/1.50.7-GCCcore-11.3.0                               jax/0.2.24-foss-2021a
+   Brotli/1.0.9-GCCcore-11.3.0                                       Pango/1.50.12-GCCcore-12.2.0                              jax/0.3.9-foss-2021a-CUDA-11.3.1
+   Brotli/1.0.9-GCCcore-12.2.0                                       Pango/1.50.14-GCCcore-12.3.0                       (D)    jax/0.3.23-foss-2021b-CUDA-11.4.1
+   Brotli/1.0.9-GCCcore-12.3.0                             (D)       ParMETIS/4.0.3-gompi-2023a                                jax/0.3.25-foss-2022a-CUDA-11.7.0
+   Brunsli/0.1-GCCcore-12.2.0                                        ParMETIS/4.0.3-gompi-2023b                         (D)    jax/0.3.25-foss-2022a                                (D)
+   Brunsli/0.1-GCCcore-12.3.0                              (D)       ParaView/5.4.1-foss-2018b-mpi                             jbigkit/2.1-GCCcore-10.3.0
+   CD-HIT/4.8.1-GCC-11.2.0                                           ParaView/5.8.0-foss-2020a-Python-3.8.2-mpi                jbigkit/2.1-GCCcore-11.2.0
+   CFITSIO/4.2.0-GCCcore-12.2.0                                      ParaView/5.9.1-foss-2021a-mpi                             jbigkit/2.1-GCCcore-11.3.0
+   CFITSIO/4.3.0-GCCcore-12.3.0                            (D)       ParaView/5.10.1-foss-2022a-mpi                            jbigkit/2.1-GCCcore-12.2.0
+   CGAL/4.11.1-foss-2018b-Python-2.7.15                              ParaView/5.11.2-foss-2023a                         (D)    jbigkit/2.1-GCCcore-12.3.0                           (D)
+   CGAL/4.14.3-gompi-2020a-Python-3.8.2                              Perl-bundle-CPAN/5.36.1-GCCcore-12.3.0                    jemalloc/5.2.1-GCCcore-11.2.0
+   CGAL/4.14.3-gompi-2021a                                           Perl/5.28.0-GCCcore-7.3.0                                 json-c/0.16-GCCcore-12.2.0
+   CGAL/4.14.3-gompi-2021b                                           Perl/5.28.1-GCCcore-8.2.0                                 json-c/0.16-GCCcore-12.3.0                           (D)
+   CGAL/4.14.3-gompi-2022a                                           Perl/5.30.0-GCCcore-8.3.0                                 jupyter-server/1.21.0-GCCcore-11.3.0
+   CGAL/5.6-GCCcore-12.3.0                                 (D)       Perl/5.30.2-GCCcore-9.3.0                                 kim-api/2.1.3-foss-2020a
+   CMake/3.9.6                                                       Perl/5.32.0-GCCcore-10.2.0                                kim-api/2.3.0-GCCcore-11.2.0                         (D)
+   CMake/3.11.4-GCCcore-7.3.0                                        Perl/5.32.1-GCCcore-10.3.0-minimal                        libFLAME/5.2.0-GCC-10.3.0
+   CMake/3.13.3-GCCcore-8.2.0                                        Perl/5.32.1-GCCcore-10.3.0                                libFLAME/5.2.0-GCCcore-10.3.0                        (D)
+   CMake/3.15.3-GCCcore-8.3.0                                        Perl/5.34.0-GCCcore-11.2.0                                libGLU/9.0.0-foss-2018b
+   CMake/3.16.4-GCCcore-9.3.0                                        Perl/5.34.1-GCCcore-11.3.0-minimal                        libGLU/9.0.1-GCCcore-8.3.0
+   CMake/3.18.4-GCCcore-10.2.0                                       Perl/5.34.1-GCCcore-11.3.0                                libGLU/9.0.1-GCCcore-9.3.0
+   CMake/3.20.1-GCCcore-10.3.0                                       Perl/5.36.0-GCCcore-12.2.0                                libGLU/9.0.1-GCCcore-10.2.0
+   CMake/3.21.1-GCCcore-11.2.0                                       Perl/5.36.1-GCCcore-12.3.0                                libGLU/9.0.1-GCCcore-10.3.0
+   CMake/3.22.1-GCCcore-11.2.0                                       Perl/5.38.0-GCCcore-13.2.0                                libGLU/9.0.2-GCCcore-11.2.0
+   CMake/3.23.1-GCCcore-11.3.0                                       Perl/5.38.0                                               libGLU/9.0.2-GCCcore-11.3.0
+   CMake/3.24.3-GCCcore-11.3.0                                       Perl/5.38.2-GCCcore-13.3.0                                libGLU/9.0.2-GCCcore-12.2.0
+   CMake/3.24.3-GCCcore-12.2.0                                       Perl/5.40.0-GCCcore-14.2.0                         (D)    libGLU/9.0.3-GCCcore-12.3.0                          (D)
+   CMake/3.26.3-GCCcore-12.3.0                                       Pillow-SIMD/8.2.0-GCCcore-10.3.0                          libarchive/3.4.3-GCCcore-10.2.0
+   CMake/3.27.6-GCCcore-13.2.0                                       Pillow-SIMD/9.2.0-GCCcore-11.3.0                   (D)    libarchive/3.5.1-GCCcore-10.3.0
+   CMake/3.29.3-GCCcore-13.3.0                             (D)       Pillow/8.0.1-GCCcore-10.2.0                               libarchive/3.5.1-GCCcore-11.2.0
+   CP2K/8.1-foss-2020b                                               Pillow/8.2.0-GCCcore-10.3.0                               libarchive/3.6.1-GCCcore-11.3.0
+   CP2K/8.2-foss-2021a                                     (D)       Pillow/8.3.2-GCCcore-11.2.0                               libarchive/3.6.1-GCCcore-12.2.0
+   CUDA/10.1.105-GCC-8.2.0-2.31.1                                    Pillow/9.1.1-GCCcore-11.3.0                               libarchive/3.6.2-GCCcore-12.3.0
+   CUDA/10.1.105                                                     Pillow/10.0.0-GCCcore-12.3.0                       (D)    libarchive/3.7.2-GCCcore-13.2.0
+   CUDA/10.1.243-GCC-8.3.0                                           PnetCDF/1.12.2-gompi-2020b                                libarchive/3.7.4-GCCcore-13.3.0                      (D)
+   CUDA/10.2.89-GCC-8.3.0                                            PnetCDF/1.12.2-gompic-2020b                               libcerf/1.13-GCCcore-9.3.0
+   CUDA/11.0.2-GCC-9.3.0                                             PnetCDF/1.12.3-gompi-2021b                                libcerf/1.14-GCCcore-10.2.0
+   CUDA/11.1.1-GCC-10.2.0                                            PnetCDF/1.12.3-iimpi-2022a                         (D)    libcerf/1.17-GCCcore-10.3.0
+   CUDA/11.3.1                                                       PyTorch/1.7.1-fosscuda-2020b                              libcerf/1.17-GCCcore-11.2.0
+   CUDA/11.4.1                                                       PyTorch/1.8.1-foss-2020b                                  libcerf/2.1-GCCcore-11.3.0
+   CUDA/11.7.0                                                       PyTorch/1.9.0-fosscuda-2020b                              libcerf/2.3-GCCcore-12.3.0                           (D)
+   CUDA/11.8.0                                                       PyTorch/1.10.0-foss-2021a-CUDA-11.3.1                     libdap/3.20.7-GCCcore-10.3.0
+   CUDA/12.1.1                                                       PyTorch/1.12.0-foss-2022a-CUDA-11.7.0                     libdeflate/1.10-GCCcore-11.3.0
+   CUDA/12.2.2                                                       PyTorch/1.12.0-foss-2022a                                 libdeflate/1.15-GCCcore-12.2.0
+   CUDA/12.3.0                                                       PyTorch/1.12.1-foss-2022a-CUDA-11.7.0                     libdeflate/1.18-GCCcore-12.3.0                       (D)
+   CUDA/12.6.0                                                       PyTorch/1.13.1-foss-2022a                                 libdrm/2.4.88-GCCcore-6.4.0
+   CUDA/12.8.0                                             (D)       PyTorch/2.0.1-foss-2022a                           (D)    libdrm/2.4.92-GCCcore-7.3.0
+   CUDAcore/11.0.2                                                   PyYAML/5.3.1-GCCcore-10.2.0                               libdrm/2.4.99-GCCcore-8.3.0
+   CUDAcore/11.1.1                                                   PyYAML/5.4.1-GCCcore-10.3.0                               libdrm/2.4.100-GCCcore-9.3.0
+   CUDAcore/11.2.1                                         (D)       PyYAML/5.4.1-GCCcore-11.2.0                               libdrm/2.4.102-GCCcore-10.2.0
+   CapnProto/1.0.1-GCCcore-12.3.0                                    PyYAML/6.0-GCCcore-11.3.0                                 libdrm/2.4.106-GCCcore-10.3.0
+   Catch2/2.13.9-GCCcore-12.3.0                                      PyYAML/6.0-GCCcore-12.2.0                                 libdrm/2.4.107-GCCcore-11.2.0
+   Catch2/2.13.9-GCCcore-13.2.0                                      PyYAML/6.0-GCCcore-12.3.0                          (D)    libdrm/2.4.110-GCCcore-11.3.0
+   Catch2/2.13.9                                           (D)       Pysam/0.17.0-GCC-11.2.0                                   libdrm/2.4.114-GCCcore-12.2.0
+   CheMPS2/1.8.9-foss-2019a                                          Python-bundle-PyPI/2023.06-GCCcore-12.3.0                 libdrm/2.4.115-GCCcore-12.3.0                        (D)
+   Check/0.15.2-GCCcore-10.2.0                                       Python-bundle-PyPI/2023.10-GCCcore-13.2.0                 libdwarf/0.4.1-GCCcore-11.3.0
+   CheckM/1.1.3-foss-2021b                                           Python-bundle-PyPI/2024.06-GCCcore-13.3.0          (D)    libdwarf/0.9.2-GCCcore-13.2.0                        (D)
+   Clang/11.0.1-gcccuda-2020b                                        Python/2.7.15-foss-2018b                                  libelf/0.8.13-GCCcore-11.3.0
+   Clang/12.0.1-GCCcore-11.2.0                                       Python/2.7.15-GCCcore-7.3.0-bare                          libepoxy/1.5.8-GCCcore-11.2.0
+   Clang/13.0.1-GCCcore-11.3.0                                       Python/2.7.15-GCCcore-8.2.0                               libepoxy/1.5.10-GCCcore-12.2.0                       (D)
+   Clang/15.0.5-GCCcore-11.3.0                             (D)       Python/2.7.16-GCCcore-8.3.0                               libevent/2.1.11-GCCcore-9.3.0
+   CompareM/0.1.2-foss-2021b                                         Python/2.7.18-GCCcore-9.3.0                               libevent/2.1.12-GCCcore-10.2.0
+   CubeGUI/4.8-GCCcore-11.3.0                                        Python/2.7.18-GCCcore-10.2.0                              libevent/2.1.12-GCCcore-10.3.0
+   CubeLib/4.8-GCCcore-11.3.0                                        Python/2.7.18-GCCcore-10.3.0-bare                         libevent/2.1.12-GCCcore-11.2.0
+   CubeLib/4.8.2-GCCcore-12.2.0                                      Python/2.7.18-GCCcore-11.2.0-bare                         libevent/2.1.12-GCCcore-11.3.0
+   CubeLib/4.8.2-GCCcore-13.2.0                                      Python/2.7.18-GCCcore-11.3.0-bare                         libevent/2.1.12-GCCcore-12.2.0
+   CubeLib/4.8.2-GCCcore-13.3.0                            (D)       Python/3.7.2-GCCcore-8.2.0                                libevent/2.1.12-GCCcore-12.3.0
+   CubeWriter/4.8-GCCcore-11.3.0                                     Python/3.7.4-GCCcore-8.3.0                                libevent/2.1.12-GCCcore-13.2.0
+   CubeWriter/4.8.2-GCCcore-12.2.0                                   Python/3.8.2-GCCcore-9.3.0                                libevent/2.1.12-GCCcore-13.3.0
+   CubeWriter/4.8.2-GCCcore-13.2.0                                   Python/3.8.6-GCCcore-10.2.0                               libevent/2.1.12-GCCcore-14.2.0                       (D)
+   CubeWriter/4.8.2-GCCcore-13.3.0                         (D)       Python/3.9.5-GCCcore-10.3.0-bare                          libexif/0.6.24-GCCcore-11.2.0
+   Cython/0.29.22-GCCcore-10.2.0                                     Python/3.9.5-GCCcore-10.3.0                               libfabric/1.11.0-GCCcore-9.3.0
+   Cython/3.0.10-GCCcore-13.2.0                            (D)       Python/3.9.6-GCCcore-11.2.0-bare                          libfabric/1.11.0-GCCcore-10.2.0
+   DAS_Tool/1.1.1-foss-2021b-R-4.1.2                                 Python/3.9.6-GCCcore-11.2.0                               libfabric/1.12.1-GCCcore-10.3.0
+   DB/18.1.32-GCCcore-8.2.0                                          Python/3.10.4-GCCcore-11.3.0-bare                         libfabric/1.13.2-GCCcore-11.2.0
+   DB/18.1.32-GCCcore-8.3.0                                          Python/3.10.4-GCCcore-11.3.0                              libfabric/1.15.1-GCCcore-11.3.0
+   DB/18.1.32-GCCcore-9.3.0                                          Python/3.10.8-GCCcore-12.2.0-bare                         libfabric/1.16.1-GCCcore-12.2.0
+   DB/18.1.40-GCCcore-10.2.0                                         Python/3.10.8-GCCcore-12.2.0                              libfabric/1.18.0-GCCcore-12.3.0
+   DB/18.1.40-GCCcore-10.3.0                                         Python/3.11.3-GCCcore-12.3.0                              libfabric/1.19.0-GCCcore-13.2.0
+   DB/18.1.40-GCCcore-11.2.0                                         Python/3.11.5-GCCcore-13.2.0                              libfabric/1.21.0-GCCcore-13.3.0                      (D)
+   DB/18.1.40-GCCcore-11.3.0                                         Python/3.12.3-GCCcore-13.3.0                       (D)    libffi/3.2.1-GCCcore-6.4.0
+   DB/18.1.40-GCCcore-12.2.0                               (D)       Qhull/2020.2-GCCcore-11.2.0                               libffi/3.2.1-GCCcore-7.3.0
+   DBus/1.10.20-GCCcore-6.4.0                                        Qhull/2020.2-GCCcore-11.3.0                               libffi/3.2.1-GCCcore-8.2.0
+   DBus/1.13.6-GCCcore-7.3.0                                         Qhull/2020.2-GCCcore-12.2.0                               libffi/3.2.1-GCCcore-8.3.0
+   DBus/1.13.12-GCCcore-9.3.0                                        Qhull/2020.2-GCCcore-12.3.0                        (D)    libffi/3.3-GCCcore-9.3.0
+   DBus/1.13.18-GCCcore-10.3.0                                       Qt5/5.10.1-foss-2018b                                     libffi/3.3-GCCcore-10.2.0
+   DBus/1.13.18-GCCcore-11.2.0                                       Qt5/5.14.1-GCCcore-9.3.0                                  libffi/3.3-GCCcore-10.3.0
+   DBus/1.14.0-GCCcore-11.3.0                                        Qt5/5.15.2-GCCcore-10.3.0                                 libffi/3.4.2-GCCcore-11.2.0
+   DBus/1.15.2-GCCcore-12.2.0                                        Qt5/5.15.2-GCCcore-11.2.0                                 libffi/3.4.2-GCCcore-11.3.0
+   DBus/1.15.4-GCCcore-12.3.0                              (D)       Qt5/5.15.5-GCCcore-11.3.0                                 libffi/3.4.4-GCCcore-12.2.0
+   DIAMOND/2.0.13-GCC-11.2.0                                         Qt5/5.15.10-GCCcore-12.3.0                         (D)    libffi/3.4.4-GCCcore-12.3.0
+   DendroPy/4.5.2-GCCcore-11.2.0                                     QuantumESPRESSO/6.7-foss-2019b                            libffi/3.4.4-GCCcore-13.2.0
+   DendroPy/4.6.1-GCCcore-12.3.0                           (D)       QuantumESPRESSO/6.8-foss-2021b                            libffi/3.4.5-GCCcore-13.3.0                          (D)
+   Doxygen/1.8.17-GCCcore-9.3.0                                      QuantumESPRESSO/7.1-foss-2022a                            libgd/2.3.0-GCCcore-9.3.0
+   Doxygen/1.8.20-GCCcore-10.2.0                                     QuantumESPRESSO/7.4-foss-2024a                     (D)    libgd/2.3.0-GCCcore-10.2.0
+   Doxygen/1.9.1-GCCcore-10.3.0                                      R-bundle-Bioconductor/3.14-foss-2021b-R-4.1.2             libgd/2.3.1-GCCcore-10.3.0
+   Doxygen/1.9.1-GCCcore-11.2.0                                      R/4.1.2-foss-2021b                                        libgd/2.3.3-GCCcore-11.2.0
+   Doxygen/1.9.4-GCCcore-11.3.0                                      R/4.2.2-foss-2022b                                 (D)    libgd/2.3.3-GCCcore-11.3.0
+   Doxygen/1.9.5-GCCcore-12.2.0                                      RDP-Classifier/2.13-Java-11                               libgd/2.3.3-GCCcore-12.3.0                           (D)
+   Doxygen/1.9.7-GCCcore-12.3.0                                      RE2/2022-02-01-GCCcore-11.2.0                             libgdiplus/6.1-GCCcore-11.2.0
+   Doxygen/1.9.8-GCCcore-13.2.0                                      Racon/1.5.0-GCCcore-11.2.0                                libgeotiff/1.7.0-GCCcore-11.2.0
+   Doxygen/1.11.0-GCCcore-13.3.0                           (D)       RapidJSON/1.1.0-GCCcore-11.2.0                            libgeotiff/1.7.1-GCCcore-12.2.0
+   ELPA/2019.11.001-foss-2019b                                       ReFrame/4.0.5                                             libgeotiff/1.7.1-GCCcore-12.3.0                      (D)
+   ELPA/2021.05.001-foss-2021b                                       Ruby/3.0.1-GCCcore-11.2.0                                 libgit2/1.1.1-GCCcore-11.2.0
+   ELPA/2021.11.001-foss-2022a                                       Rust/1.52.1-GCCcore-10.3.0                                libgit2/1.5.0-GCCcore-12.2.0                         (D)
+   ELPA/2023.05.001-foss-2023a                                       Rust/1.54.0-GCCcore-11.2.0                                libglvnd/1.2.0-GCCcore-9.3.0
+   ELPA/2024.05.001-foss-2024a                             (D)       Rust/1.60.0-GCCcore-11.3.0                                libglvnd/1.3.2-GCCcore-10.2.0
+   ESMF/8.1.1-foss-2021a                                             Rust/1.65.0-GCCcore-12.2.0                                libglvnd/1.3.3-GCCcore-10.3.0
+   EasyBuild/3.8.1                                                   Rust/1.70.0-GCCcore-12.3.0                                libglvnd/1.3.3-GCCcore-11.2.0
+   EasyBuild/3.9.0                                                   Rust/1.73.0-GCCcore-13.2.0                                libglvnd/1.4.0-GCCcore-11.3.0
+   EasyBuild/4.3.3                                                   Rust/1.78.0-GCCcore-13.3.0                         (D)    libglvnd/1.6.0-GCCcore-12.2.0
+   EasyBuild/4.4.1                                                   SAMtools/1.14-GCC-11.2.0                                  libglvnd/1.6.0-GCCcore-12.3.0                        (D)
+   EasyBuild/4.5.1                                                   SCOTCH/6.0.6-foss-2018b                                   libiconv/1.16-GCCcore-9.3.0
+   EasyBuild/4.5.3                                                   SCOTCH/6.0.9-gompi-2020a                                  libiconv/1.16-GCCcore-10.2.0
+   EasyBuild/4.5.4                                                   SCOTCH/6.1.0-gompi-2020b                                  libiconv/1.16-GCCcore-10.3.0
+   EasyBuild/4.6.0                                                   SCOTCH/6.1.0-gompi-2021a                                  libiconv/1.16-GCCcore-11.2.0
+   EasyBuild/4.6.1                                                   SCOTCH/6.1.2-gompi-2021b                                  libiconv/1.17-GCCcore-11.3.0
+   EasyBuild/4.6.2                                                   SCOTCH/6.1.2-iimpi-2021b                                  libiconv/1.17-GCCcore-12.2.0
+   EasyBuild/4.7.0                                                   SCOTCH/7.0.1-gompi-2022a                                  libiconv/1.17-GCCcore-12.3.0
+   EasyBuild/4.7.1                                                   SCOTCH/7.0.3-gompi-2023a                                  libiconv/1.17-GCCcore-13.2.0
+   EasyBuild/4.7.2                                                   SCOTCH/7.0.4-gompi-2023b                           (D)    libiconv/1.17-GCCcore-13.3.0                         (D)
+   EasyBuild/4.8.0                                                   SDL2/2.0.14-GCCcore-10.2.0                                libjpeg-turbo/2.0.3-GCCcore-8.3.0
+   EasyBuild/4.8.1                                                   SDL2/2.28.2-GCCcore-12.3.0                         (D)    libjpeg-turbo/2.0.4-GCCcore-9.3.0
+   EasyBuild/4.8.2                                                   SIONlib/1.7.7-GCCcore-11.3.0-tools                        libjpeg-turbo/2.0.5-GCCcore-10.2.0
+   EasyBuild/4.9.0                                                   SIONlib/1.7.7-GCCcore-12.2.0-tools                        libjpeg-turbo/2.0.6-GCCcore-10.3.0
+   EasyBuild/4.9.1                                                   SIONlib/1.7.7-GCCcore-13.2.0-tools                        libjpeg-turbo/2.0.6-GCCcore-11.2.0
+   EasyBuild/4.9.2                                                   SIONlib/1.7.7-GCCcore-13.3.0-tools                 (D)    libjpeg-turbo/2.1.3-GCCcore-11.3.0
+   EasyBuild/4.9.4                                                   SLEPc/3.15.1-foss-2021a                                   libjpeg-turbo/2.1.4-GCCcore-12.2.0
+   EasyBuild/5.0.0                                                   SLEPc/3.18.2-intel-2021b                           (D)    libjpeg-turbo/2.1.5.1-GCCcore-12.3.0                 (D)
+   EasyBuild/5.1.0                                         (D)       SPAdes/3.15.3-GCC-11.2.0                                  libmatheval/1.1.11-GCCcore-9.3.0
+   Eigen/3.3.4                                                       SQLite/3.20.1-GCCcore-6.4.0                               libogg/1.3.5-GCCcore-11.2.0
+   Eigen/3.3.7-GCCcore-9.3.0                                         SQLite/3.24.0-GCCcore-7.3.0                               libogg/1.3.5-GCCcore-12.2.0                          (D)
+   Eigen/3.3.7                                                       SQLite/3.27.2-GCCcore-8.2.0                               libopus/1.3.1-GCCcore-12.2.0
+   Eigen/3.3.8-GCCcore-10.2.0                                        SQLite/3.29.0-GCCcore-8.3.0                               libpciaccess/0.14-GCCcore-6.4.0
+   Eigen/3.3.9-GCCcore-10.3.0                                        SQLite/3.31.1-GCCcore-9.3.0                               libpciaccess/0.14-GCCcore-7.3.0
+   Eigen/3.3.9-GCCcore-11.2.0                                        SQLite/3.33.0-GCCcore-10.2.0                              libpciaccess/0.14-GCCcore-8.2.0
+   Eigen/3.4.0-GCCcore-11.2.0                                        SQLite/3.35.4-GCCcore-10.3.0                              libpciaccess/0.14-GCCcore-8.3.0
+   Eigen/3.4.0-GCCcore-11.3.0                                        SQLite/3.36-GCCcore-11.2.0                                libpciaccess/0.16-GCCcore-9.3.0
+   Eigen/3.4.0-GCCcore-12.2.0                                        SQLite/3.38.3-GCCcore-11.3.0                              libpciaccess/0.16-GCCcore-10.2.0
+   Eigen/3.4.0-GCCcore-12.3.0                                        SQLite/3.39.4-GCCcore-12.2.0                              libpciaccess/0.16-GCCcore-10.3.0
+   Eigen/3.4.0-GCCcore-13.2.0                              (D)       SQLite/3.42.0-GCCcore-12.3.0                              libpciaccess/0.16-GCCcore-11.2.0
+   Extrae/4.0.4-gompi-2022a                                          SQLite/3.43.1-GCCcore-13.2.0                              libpciaccess/0.16-GCCcore-11.3.0
+   FCM/2.3.1                                                         SQLite/3.45.3-GCCcore-13.3.0                       (D)    libpciaccess/0.17-GCCcore-12.2.0
+   FFTW.MPI/3.3.10-gompi-2022a                                       SWIG/4.0.1-GCCcore-8.3.0                                  libpciaccess/0.17-GCCcore-12.3.0
+   FFTW.MPI/3.3.10-gompi-2022b                                       SWIG/4.0.2-GCCcore-10.2.0                                 libpciaccess/0.17-GCCcore-13.2.0
+   FFTW.MPI/3.3.10-gompi-2023a                                       SWIG/4.0.2-GCCcore-10.3.0                                 libpciaccess/0.18.1-GCCcore-13.3.0                   (D)
+   FFTW.MPI/3.3.10-gompi-2023b                                       SWIG/4.0.2-GCCcore-11.2.0                                 libpng/1.6.34-GCCcore-7.3.0
+   FFTW.MPI/3.3.10-gompi-2024a                             (D)       SWIG/4.0.2-GCCcore-11.3.0                                 libpng/1.6.37-GCCcore-8.3.0
+   FFTW/3.3.7-gompi-2018a                                            SWIG/4.1.1-GCCcore-12.3.0                          (D)    libpng/1.6.37-GCCcore-9.3.0
+   FFTW/3.3.8-gompi-2018b                                            ScaFaCoS/1.0.1-foss-2020a                                 libpng/1.6.37-GCCcore-10.2.0
+   FFTW/3.3.8-gompi-2019a                                            ScaFaCoS/1.0.1-foss-2021b                          (D)    libpng/1.6.37-GCCcore-10.3.0
+   FFTW/3.3.8-gompi-2019b                                            ScaLAPACK/2.0.2-gompi-2017b-OpenBLAS-0.2.20               libpng/1.6.37-GCCcore-11.2.0
+   FFTW/3.3.8-gompi-2020a                                            ScaLAPACK/2.0.2-gompi-2018a-OpenBLAS-0.2.20               libpng/1.6.37-GCCcore-11.3.0
+   FFTW/3.3.8-gompi-2020b                                            ScaLAPACK/2.0.2-gompi-2018b-OpenBLAS-0.3.1                libpng/1.6.38-GCCcore-12.2.0
+   FFTW/3.3.8-gompic-2019a                                           ScaLAPACK/2.0.2-gompi-2019a-OpenBLAS-0.3.5                libpng/1.6.39-GCCcore-12.3.0
+   FFTW/3.3.8-gompic-2019b                                           ScaLAPACK/2.0.2-gompi-2019b                               libpng/1.6.40-GCCcore-13.2.0
+   FFTW/3.3.8-gompic-2020b                                           ScaLAPACK/2.0.2-gompic-2019a-OpenBLAS-0.3.5               libpng/1.6.43-GCCcore-13.3.0                         (D)
+   FFTW/3.3.9-gompi-2021a                                            ScaLAPACK/2.0.2-gompic-2019b                              libreadline/7.0-GCCcore-6.4.0
+   FFTW/3.3.10-GCC-11.3.0                                            ScaLAPACK/2.1.0-gompi-2020a                               libreadline/7.0-GCCcore-7.3.0
+   FFTW/3.3.10-GCC-12.2.0                                            ScaLAPACK/2.1.0-gompi-2020b                               libreadline/8.0-GCCcore-8.2.0
+   FFTW/3.3.10-GCC-12.3.0                                            ScaLAPACK/2.1.0-gompi-2021a-bf                            libreadline/8.0-GCCcore-8.3.0
+   FFTW/3.3.10-GCC-13.2.0                                            ScaLAPACK/2.1.0-gompi-2021a-fb                            libreadline/8.0-GCCcore-9.3.0
+   FFTW/3.3.10-GCC-13.3.0                                            ScaLAPACK/2.1.0-gompi-2021b-fb                            libreadline/8.0-GCCcore-10.2.0
+   FFTW/3.3.10-GCC-14.2.0                                            ScaLAPACK/2.1.0-gompic-2020b                              libreadline/8.1-GCCcore-10.3.0
+   FFTW/3.3.10-gompi-2021b                                           ScaLAPACK/2.2.0-gompi-2022a-fb                            libreadline/8.1-GCCcore-11.2.0
+   FFTW/3.3.10-iimpi-2022b                                           ScaLAPACK/2.2.0-gompi-2022b-fb                            libreadline/8.1.2-GCCcore-11.3.0
+   FFTW/3.3.10-NVHPC-22.7-CUDA-11.7.0                                ScaLAPACK/2.2.0-gompi-2023a-fb                            libreadline/8.2-GCCcore-12.2.0
+   FFTW/3.3.10-NVHPC-23.7-CUDA-12.1.1                      (D)       ScaLAPACK/2.2.0-gompi-2023b-fb                            libreadline/8.2-GCCcore-12.3.0
+   FFmpeg/4.2.2-GCCcore-9.3.0                                        ScaLAPACK/2.2.0-gompi-2024a-fb                     (D)    libreadline/8.2-GCCcore-13.2.0
+   FFmpeg/4.3.1-GCCcore-10.2.0                                       Scalasca/2.6.1-gompi-2022a                                libreadline/8.2-GCCcore-13.3.0
+   FFmpeg/4.3.2-GCCcore-10.3.0                                       SciPy-bundle/2019.03-foss-2019a                           libreadline/8.2-GCCcore-14.2.0                       (D)
+   FFmpeg/4.3.2-GCCcore-11.2.0                                       SciPy-bundle/2019.03-fosscuda-2019a                       libsndfile/1.0.31-GCCcore-11.2.0
+   FFmpeg/4.4.2-GCCcore-11.3.0                                       SciPy-bundle/2019.10-foss-2019b-Python-3.7.4              libsndfile/1.2.0-GCCcore-12.2.0                      (D)
+   FFmpeg/6.0-GCCcore-12.3.0                               (D)       SciPy-bundle/2019.10-fosscuda-2019b-Python-3.7.4          libsodium/1.0.18-GCCcore-11.3.0
+   FLAC/1.3.3-GCCcore-11.2.0                                         SciPy-bundle/2020.03-foss-2020a-Python-3.8.2              libtirpc/1.3.2-GCCcore-10.3.0
+   FLAC/1.4.2-GCCcore-12.2.0                               (D)       SciPy-bundle/2020.11-foss-2020b                           libtirpc/1.3.2-GCCcore-11.2.0
+   FLTK/1.3.5-GCCcore-10.2.0                                         SciPy-bundle/2020.11-fosscuda-2020b                       libtirpc/1.3.2-GCCcore-11.3.0
+   FLTK/1.3.6-GCCcore-10.3.0                               (D)       SciPy-bundle/2021.05-foss-2021a                           libtirpc/1.3.3-GCCcore-12.2.0
+   FastANI/1.34-GCC-12.3.0                                           SciPy-bundle/2021.10-foss-2021b                           libtirpc/1.3.3-GCCcore-12.3.0
+   FastTree/2.1.11-GCCcore-12.3.0                                    SciPy-bundle/2021.10-intel-2021b                          libtirpc/1.3.5-GCCcore-13.3.0                        (D)
+   Ferret/7.6.0-foss-2022a                                           SciPy-bundle/2022.05-foss-2022a                           libtool/2.4.6-GCCcore-6.4.0
+   Flask/1.1.2-GCCcore-10.2.0                                        SciPy-bundle/2022.05-intel-2022a                          libtool/2.4.6-GCCcore-7.3.0
+   Flask/2.0.2-GCCcore-11.2.0                                        SciPy-bundle/2023.02-gfbf-2022b                           libtool/2.4.6-GCCcore-8.2.0
+   Flask/2.2.2-GCCcore-11.3.0                                        SciPy-bundle/2023.07-gfbf-2023a                           libtool/2.4.6-GCCcore-8.3.0
+   Flask/2.3.3-GCCcore-12.3.0                              (D)       SciPy-bundle/2023.11-gfbf-2023b                    (D)    libtool/2.4.6-GCCcore-9.3.0
+   FlexiBLAS/3.0.4-GCC-10.3.0                                        Score-P/8.0-gompi-2022a                                   libtool/2.4.6-GCCcore-10.2.0
+   FlexiBLAS/3.0.4-GCC-11.2.0                                        Score-P/8.3-gompi-2022b                                   libtool/2.4.6-GCCcore-10.3.0
+   FlexiBLAS/3.2.0-GCC-11.3.0                                        Score-P/8.4-gompi-2024a                            (D)    libtool/2.4.6-GCCcore-11.2.0
+   FlexiBLAS/3.2.1-GCC-12.2.0                                        Short-Pair/20170125-foss-2021b                            libtool/2.4.7-GCCcore-11.3.0
+   FlexiBLAS/3.3.1-GCC-12.3.0                                        Siesta/4.1.5-foss-2022a                                   libtool/2.4.7-GCCcore-12.2.0
+   FlexiBLAS/3.3.1-GCC-13.2.0                                        SimpleITK/2.1.0-fosscuda-2020b                            libtool/2.4.7-GCCcore-12.3.0
+   FlexiBLAS/3.4.4-GCC-13.3.0                              (D)       SqueezeMeta/1.5.0-foss-2021b                              libtool/2.4.7-GCCcore-13.2.0
+   Flye/2.9.4-GCC-13.2.0                                             SuiteSparse/5.10.1-foss-2021a-METIS-5.1.0                 libtool/2.4.7-GCCcore-13.3.0
+   FragGeneScan/1.31-GCCcore-11.2.0                                  SuiteSparse/5.10.1-intel-2021b-METIS-5.1.0                libtool/2.5.4-GCCcore-14.2.0                         (D)
+   FreeImage/3.18.0-GCCcore-10.3.0                                   SuiteSparse/7.1.0-foss-2023a                       (D)    libunistring/0.9.10-GCCcore-9.3.0
+   FriBidi/1.0.9-GCCcore-9.3.0                                       SuperLU_DIST/8.1.2-foss-2023a                             libunwind/1.2.1-GCCcore-7.3.0
+   FriBidi/1.0.10-GCCcore-10.2.0                                     Szip/2.1.1-GCCcore-6.4.0                                  libunwind/1.3.1-GCCcore-8.3.0
+   FriBidi/1.0.10-GCCcore-10.3.0                                     Szip/2.1.1-GCCcore-7.3.0                                  libunwind/1.3.1-GCCcore-9.3.0
+   FriBidi/1.0.10-GCCcore-11.2.0                                     Szip/2.1.1-GCCcore-8.2.0                                  libunwind/1.4.0-GCCcore-10.2.0
+   FriBidi/1.0.12-GCCcore-11.3.0                                     Szip/2.1.1-GCCcore-8.3.0                                  libunwind/1.4.0-GCCcore-10.3.0
+   FriBidi/1.0.12-GCCcore-12.2.0                                     Szip/2.1.1-GCCcore-9.3.0                                  libunwind/1.5.0-GCCcore-11.2.0
+   FriBidi/1.0.12-GCCcore-12.3.0                           (D)       Szip/2.1.1-GCCcore-10.2.0                                 libunwind/1.6.2-GCCcore-11.3.0
+   GCC/4.8.5                                                         Szip/2.1.1-GCCcore-10.3.0                                 libunwind/1.6.2-GCCcore-12.2.0
+   GCC/7.3.0-2.30                                                    Szip/2.1.1-GCCcore-11.2.0                                 libunwind/1.6.2-GCCcore-12.3.0
+   GCC/8.2.0-2.31.1                                                  Szip/2.1.1-GCCcore-11.3.0                                 libunwind/1.6.2-GCCcore-13.2.0
+   GCC/8.3.0                                                         Szip/2.1.1-GCCcore-12.2.0                                 libunwind/1.8.1-GCCcore-13.3.0                       (D)
+   GCC/9.3.0                                                         Szip/2.1.1-GCCcore-12.3.0                                 libvdwxc/0.4.0-foss-2020b
+   GCC/10.2.0                                                        Szip/2.1.1-GCCcore-13.2.0                                 libvdwxc/0.4.0-foss-2021b
+   GCC/10.3.0                                                        Szip/2.1.1-GCCcore-13.3.0                          (D)    libvdwxc/0.4.0-foss-2022a
+   GCC/11.2.0                                                        TOPAZ/0.2.4-foss-2020b                                    libvdwxc/0.4.0-foss-2023a                            (D)
+   GCC/11.3.0                                                        Tcl/8.6.8-GCCcore-6.4.0                                   libvorbis/1.3.7-GCCcore-11.2.0
+   GCC/12.2.0                                                        Tcl/8.6.8-GCCcore-7.3.0                                   libvorbis/1.3.7-GCCcore-12.2.0                       (D)
+   GCC/12.3.0                                                        Tcl/8.6.9-GCCcore-8.2.0                                   libvori/220621-GCCcore-12.3.0
+   GCC/13.2.0                                                        Tcl/8.6.9-GCCcore-8.3.0                                   libwebp/1.2.0-GCCcore-11.2.0
+   GCC/13.3.0                                                        Tcl/8.6.10-GCCcore-9.3.0                                  libxc/3.0.1-foss-2020a
+   GCC/14.2.0                                              (D)       Tcl/8.6.10-GCCcore-10.2.0                                 libxc/4.3.4-GCC-8.2.0-2.31.1
+   GCCcore/6.2.0                                                     Tcl/8.6.11-GCCcore-10.3.0                                 libxc/4.3.4-GCC-8.3.0
+   GCCcore/6.4.0                                                     Tcl/8.6.11-GCCcore-11.2.0                                 libxc/4.3.4-GCC-10.2.0
+   GCCcore/7.3.0                                                     Tcl/8.6.12-GCCcore-11.3.0                                 libxc/5.1.5-GCC-10.3.0
+   GCCcore/8.2.0                                                     Tcl/8.6.12-GCCcore-12.2.0                                 libxc/5.1.6-GCC-11.2.0
+   GCCcore/8.3.0                                                     Tcl/8.6.13-GCCcore-12.3.0                                 libxc/5.1.6-intel-compilers-2021.4.0
+   GCCcore/9.3.0                                                     Tcl/8.6.13-GCCcore-13.2.0                                 libxc/5.2.3-GCC-11.3.0
+   GCCcore/10.2.0                                                    Tcl/8.6.14-GCCcore-13.3.0                          (D)    libxc/6.2.2-GCC-12.3.0
+   GCCcore/10.3.0                                                    TensorFlow/2.4.1-fosscuda-2020b                           libxc/6.2.2-GCC-13.3.0                               (D)
+   GCCcore/11.2.0                                                    TensorFlow/2.5.0-fosscuda-2020b                           libxml2/2.9.4-GCCcore-6.4.0
+   GCCcore/11.3.0                                                    TensorFlow/2.6.0-foss-2021a-CUDA-11.3.1                   libxml2/2.9.7-GCCcore-6.4.0
+   GCCcore/12.2.0                                                    TensorFlow/2.6.0-foss-2021a                               libxml2/2.9.8-GCCcore-7.3.0
+   GCCcore/12.3.0                                                    TensorFlow/2.7.1-foss-2021b-CUDA-11.4.1                   libxml2/2.9.8-GCCcore-8.2.0
+   GCCcore/13.2.0                                                    TensorFlow/2.11.0-foss-2022a-CUDA-11.7.0                  libxml2/2.9.9-GCCcore-8.3.0
+   GCCcore/13.3.0                                                    TensorFlow/2.11.0-foss-2022a                       (D)    libxml2/2.9.10-GCCcore-9.3.0
+   GCCcore/14.2.0                                          (D)       Tk/8.6.10-GCCcore-9.3.0                                   libxml2/2.9.10-GCCcore-10.2.0
+   GDAL/3.3.2-foss-2021b                                             Tk/8.6.10-GCCcore-10.2.0                                  libxml2/2.9.10-GCCcore-10.3.0
+   GDAL/3.6.2-foss-2022b                                             Tk/8.6.11-GCCcore-10.3.0                                  libxml2/2.9.10-GCCcore-11.2.0
+   GDAL/3.7.1-foss-2023a                                   (D)       Tk/8.6.11-GCCcore-11.2.0                                  libxml2/2.9.13-GCCcore-11.3.0
+   GDB/12.1-GCCcore-11.3.0                                           Tk/8.6.12-GCCcore-11.3.0                                  libxml2/2.10.3-GCCcore-12.2.0
+   GDRCopy/2.1-GCCcore-10.2.0-CUDA-11.1.1                            Tk/8.6.12-GCCcore-12.2.0                                  libxml2/2.11.4-GCCcore-12.3.0
+   GDRCopy/2.1-GCCcore-10.2.0-CUDA-11.2.1                            Tk/8.6.13-GCCcore-12.3.0                           (D)    libxml2/2.11.5-GCCcore-13.2.0
+   GDRCopy/2.2-GCCcore-10.3.0                                        Tkinter/3.8.2-GCCcore-9.3.0                               libxml2/2.12.7-GCCcore-13.3.0                        (D)
+   GDRCopy/2.3-GCCcore-11.2.0                                        Tkinter/3.8.6-GCCcore-10.2.0                              libxslt/1.1.34-GCCcore-10.2.0
+   GDRCopy/2.3-GCCcore-11.3.0                                        Tkinter/3.9.6-GCCcore-11.2.0                              libxslt/1.1.34-GCCcore-11.3.0
+   GDRCopy/2.3.1-GCCcore-12.3.0                                      Tkinter/3.10.4-GCCcore-11.3.0                             libxslt/1.1.37-GCCcore-12.2.0                        (D)
+   GDRCopy/2.4-GCCcore-13.2.0                                        Tkinter/3.11.3-GCCcore-12.3.0                      (D)    libxsmm/1.16.1-GCC-10.2.0
+   GDRCopy/2.4.1-GCCcore-13.3.0                            (D)       Transformers/4.30.2-foss-2022b                            libxsmm/1.16.2-GCC-10.3.0
+   GEOS/3.9.1-GCC-11.2.0                                             Trimmomatic/0.39-Java-11                                  libxsmm/1.17-GCC-12.3.0                              (D)
+   GEOS/3.11.1-GCC-12.2.0                                            UCC-CUDA/1.0.0-GCCcore-11.3.0-CUDA-11.7.0                 libyaml/0.1.7-GCCcore-6.4.0
+   GEOS/3.12.0-GCC-12.3.0                                            UCC/1.0.0-GCCcore-11.3.0                                  libyaml/0.2.5-GCCcore-10.2.0
+   GEOS/3.12.1-GCC-13.2.0                                  (D)       UCC/1.1.0-GCCcore-12.2.0                                  libyaml/0.2.5-GCCcore-10.3.0
+   GLPK/5.0-GCCcore-11.2.0                                           UCC/1.2.0-GCCcore-12.3.0                                  libyaml/0.2.5-GCCcore-11.2.0
+   GLPK/5.0-GCCcore-12.2.0                                 (D)       UCC/1.2.0-GCCcore-13.2.0                                  libyaml/0.2.5-GCCcore-11.3.0
+   GLib/2.54.3-GCCcore-7.3.0                                         UCC/1.3.0-GCCcore-13.3.0                           (D)    libyaml/0.2.5-GCCcore-12.2.0
+   GLib/2.64.1-GCCcore-9.3.0                                         UCX-CUDA/1.10.0-GCCcore-10.3.0-CUDA-11.3.1                libyaml/0.2.5-GCCcore-12.3.0                         (D)
+   GLib/2.66.1-GCCcore-10.2.0                                        UCX-CUDA/1.11.2-GCCcore-11.2.0-CUDA-11.4.1                likwid/5.2.1-GCC-11.2.0
+   GLib/2.68.2-GCCcore-10.3.0                                        UCX-CUDA/1.12.1-GCCcore-11.3.0-CUDA-11.7.0                lxml/4.6.2-GCCcore-10.2.0
+   GLib/2.69.1-GCCcore-11.2.0                                        UCX-CUDA/1.15.0-GCCcore-12.3.0-CUDA-12.1.1                lxml/4.9.1-GCCcore-11.3.0                            (D)
+   GLib/2.72.1-GCCcore-11.3.0                                        UCX-CUDA/1.15.0-GCCcore-13.2.0-CUDA-12.3.0                lz4/1.9.2-GCCcore-9.3.0
+   GLib/2.75.0-GCCcore-12.2.0                                        UCX-CUDA/1.16.0-GCCcore-13.3.0-CUDA-12.6.0         (D)    lz4/1.9.2-GCCcore-10.2.0
+   GLib/2.77.1-GCCcore-12.3.0                              (D)       UCX/1.8.0-GCCcore-9.3.0                                   lz4/1.9.3-GCCcore-10.3.0
+   GMP/6.1.2-GCCcore-7.3.0                                           UCX/1.9.0-GCCcore-10.2.0-CUDA-11.1.1                      lz4/1.9.3-GCCcore-11.2.0
+   GMP/6.1.2-GCCcore-8.2.0                                           UCX/1.9.0-GCCcore-10.2.0-CUDA-11.2.1                      lz4/1.9.3-GCCcore-11.3.0
+   GMP/6.1.2-GCCcore-8.3.0                                           UCX/1.9.0-GCCcore-10.2.0                                  lz4/1.9.4-GCCcore-12.2.0
+   GMP/6.2.0-GCCcore-9.3.0                                           UCX/1.10.0-GCCcore-10.3.0                                 lz4/1.9.4-GCCcore-12.3.0
+   GMP/6.2.0-GCCcore-10.2.0                                          UCX/1.11.2-GCCcore-11.2.0                                 lz4/1.9.4-GCCcore-13.2.0
+   GMP/6.2.1-GCCcore-10.3.0                                          UCX/1.12.1-GCCcore-11.3.0                                 lz4/1.9.4-GCCcore-13.3.0                             (D)
+   GMP/6.2.1-GCCcore-11.2.0                                          UCX/1.13.1-GCCcore-10.3.0                                 magma/2.5.4-fosscuda-2020b
+   GMP/6.2.1-GCCcore-11.3.0                                          UCX/1.13.1-GCCcore-12.2.0                                 magma/2.6.1-foss-2021a-CUDA-11.3.1
+   GMP/6.2.1-GCCcore-12.2.0                                          UCX/1.14.1-GCCcore-12.3.0                                 magma/2.6.2-foss-2022a-CUDA-11.7.0                   (D)
+   GMP/6.2.1-GCCcore-12.3.0                                (D)       UCX/1.15.0-GCCcore-12.3.0                                 make/4.2.1-GCCcore-8.3.0
+   GObject-Introspection/1.64.0-GCCcore-9.3.0-Python-3.8.2           UCX/1.15.0-GCCcore-13.2.0                                 make/4.3-GCCcore-9.3.0
+   GObject-Introspection/1.66.1-GCCcore-10.2.0                       UCX/1.16.0-rc4-GCCcore-11.2.0                             make/4.3-GCCcore-10.2.0
+   GObject-Introspection/1.68.0-GCCcore-10.3.0                       UCX/1.16.0-rc4-GCCcore-13.2.0                             make/4.3-GCCcore-10.3.0
+   GObject-Introspection/1.68.0-GCCcore-11.2.0                       UCX/1.16.0-GCCcore-13.3.0                                 make/4.3-GCCcore-11.2.0
+   GObject-Introspection/1.72.0-GCCcore-11.3.0                       UCX/1.18.0-GCCcore-14.2.0                          (D)    make/4.4.1-GCCcore-12.3.0
+   GObject-Introspection/1.74.0-GCCcore-12.2.0                       UDUNITS/2.2.28-GCCcore-10.3.0                             make/4.4.1-GCCcore-13.2.0
+   GObject-Introspection/1.76.1-GCCcore-12.3.0             (D)       UDUNITS/2.2.28-GCCcore-11.2.0                             make/4.4.1-GCCcore-13.3.0                            (D)
+   GPAW-setups/0.9.20000                                             UDUNITS/2.2.28-GCCcore-11.3.0                             makedepend/1.0.6-GCCcore-9.3.0
+   GPAW/21.6.0-foss-2020b-ASE-3.22.0                                 UDUNITS/2.2.28-GCCcore-12.2.0                             makeinfo/6.7-GCCcore-9.3.0
+   GPAW/22.8.0-foss-2021b                                            UDUNITS/2.2.28-GCCcore-12.3.0                      (D)    makeinfo/6.7-GCCcore-10.3.0-minimal
+   GPAW/22.8.0-foss-2022a                                            UnZip/6.0-GCCcore-9.3.0                                   makeinfo/6.8-GCCcore-11.3.0
+   GPAW/23.9.1-foss-2023a                                  (D)       UnZip/6.0-GCCcore-10.2.0                                  makeinfo/7.0.3-GCCcore-12.2.0                        (D)
+   GROMACS/2019-foss-2018b                                           UnZip/6.0-GCCcore-10.3.0                                  matplotlib/3.2.1-foss-2020a-Python-3.8.2
+   GROMACS/2020.4-foss-2020a-Python-3.8.2                            UnZip/6.0-GCCcore-11.2.0                                  matplotlib/3.3.3-foss-2020b
+   GROMACS/2021.3-foss-2021a-CUDA-11.3.1-PLUMED-2.7.2                UnZip/6.0-GCCcore-11.3.0                                  matplotlib/3.3.3-fosscuda-2020b
+   GROMACS/2021.5-foss-2021b-CUDA-11.4.1-PLUMED-2.8.0                UnZip/6.0-GCCcore-12.2.0                                  matplotlib/3.4.3-foss-2021b
+   GROMACS/2021.5-foss-2021b-CUDA-11.4.1                             UnZip/6.0-GCCcore-12.3.0                                  matplotlib/3.5.2-foss-2021b
+   GROMACS/2021.5-foss-2021b-PLUMED-2.8.0                            UnZip/6.0-GCCcore-13.2.0                                  matplotlib/3.5.2-foss-2022a
+   GROMACS/2021.5-foss-2021b                                         UnZip/6.0-GCCcore-13.3.0                                  matplotlib/3.5.2-intel-2022a
+   GROMACS/2023.3-foss-2022a-CUDA-11.7.0                             UnZip/6.0-GCCcore-14.2.0                           (D)    matplotlib/3.7.2-gfbf-2023a                          (D)
+   GROMACS/2023.3-foss-2022a                                         Uni-Core/0.0.3-foss-2022a-CUDA-11.7.0                     maturin/1.6.0-GCCcore-13.3.0
+   GROMACS/2024.4-foss-2023b                               (D)       Uni-Core/0.0.3-foss-2022a                          (D)    meson-python/0.13.2-GCCcore-12.3.0
+   GSL/2.6-GCC-9.3.0                                                 Unicycler/0.5.0-gompi-2021b                               meson-python/0.15.0-GCCcore-13.2.0                   (D)
+   GSL/2.6-GCC-10.2.0                                                VMD/1.9.4a51-foss-2020b                                   minimap2/2.22-GCCcore-11.2.0
+   GSL/2.7-GCC-10.3.0                                                VMD/1.9.4a51-fosscuda-2020b                        (D)    molmod/1.4.5-foss-2020a-Python-3.8.2
+   GSL/2.7-GCC-11.2.0                                                VTK/8.2.0-foss-2020a-Python-3.8.2                         motif/2.3.8-GCCcore-10.3.0
+   GSL/2.7-GCC-11.3.0                                                VTK/9.0.1-fosscuda-2020b                                  motif/2.3.8-GCCcore-11.2.0                           (D)
+   GSL/2.7-GCC-12.2.0                                                VTK/9.1.0-foss-2021b                               (D)    mpi4py/3.1.4-gompi-2023a
+   GSL/2.7-GCC-12.3.0                                                VTune/2021.9.0                                            mpi4py/3.1.5-gompi-2023b                             (D)
+   GSL/2.7-GCC-13.2.0                                                Vampire/4.5.1-GCCcore-10.2.0                              ncurses/5.9
+   GSL/2.7-intel-compilers-2022.1.0                        (D)       Voro++/0.4.6-GCCcore-9.3.0                                ncurses/6.0-GCCcore-6.4.0
+   GTDB-Tk/2.4.0-foss-2023a                                          Voro++/0.4.6-GCCcore-11.2.0                        (D)    ncurses/6.0
+   GTK3/3.24.31-GCCcore-11.2.0                                       X11/20180604-GCCcore-7.3.0                                ncurses/6.1-GCCcore-7.3.0
+   GTK3/3.24.35-GCCcore-12.2.0                             (D)       X11/20190717-GCCcore-8.3.0                                ncurses/6.1-GCCcore-8.2.0
+   Gdk-Pixbuf/2.42.6-GCCcore-11.2.0                                  X11/20200222-GCCcore-9.3.0                                ncurses/6.1-GCCcore-8.3.0
+   Gdk-Pixbuf/2.42.10-GCCcore-12.2.0                       (D)       X11/20201008-GCCcore-10.2.0                               ncurses/6.1
+   Ghostscript/9.53.3-GCCcore-10.2.0                                 X11/20210518-GCCcore-10.3.0                               ncurses/6.2-GCCcore-9.3.0
+   Ghostscript/9.54.0-GCCcore-11.2.0                                 X11/20210802-GCCcore-11.2.0                               ncurses/6.2-GCCcore-10.2.0
+   Ghostscript/10.0.0-GCCcore-12.2.0                       (D)       X11/20220504-GCCcore-11.3.0                               ncurses/6.2-GCCcore-10.3.0
+   GitPython/3.1.27-GCCcore-11.3.0                                   X11/20221110-GCCcore-12.2.0                               ncurses/6.2-GCCcore-11.2.0
+   Go/1.17.6                                                         X11/20230603-GCCcore-12.3.0                        (D)    ncurses/6.2
+   Go/1.18.1                                                         XML-LibXML/2.0207-GCCcore-11.2.0                          ncurses/6.3-GCCcore-11.3.0
+   Go/1.20.4                                                         XML-Parser/2.44_01-GCCcore-7.3.0-Perl-5.28.0              ncurses/6.3-GCCcore-12.2.0
+   Go/1.21.1                                                         XZ/5.2.4-GCCcore-7.3.0                                    ncurses/6.3
+   Go/1.22.1                                               (D)       XZ/5.2.4-GCCcore-8.2.0                                    ncurses/6.4-GCCcore-12.3.0
+   Grace/5.1.25-foss-2021a                                           XZ/5.2.4-GCCcore-8.3.0                                    ncurses/6.4-GCCcore-13.2.0
+   Grace/5.1.25-foss-2021b                                 (D)       XZ/5.2.5-GCCcore-9.3.0                                    ncurses/6.4
+   Guile/1.8.8-GCCcore-9.3.0                                         XZ/5.2.5-GCCcore-10.2.0                                   ncurses/6.5-GCCcore-13.3.0
+   Gurobi/9.5.1-GCCcore-11.2.0                                       XZ/5.2.5-GCCcore-10.3.0                                   ncurses/6.5-GCCcore-14.2.0
+   HDF/4.2.15-GCCcore-11.2.0                                         XZ/5.2.5-GCCcore-11.2.0                                   ncurses/6.5                                          (D)
+   HDF/4.2.15-GCCcore-12.2.0                                         XZ/5.2.5-GCCcore-11.3.0                                   ncview/2.1.8-gompi-2023a
+   HDF/4.2.16-2-GCCcore-12.3.0                             (D)       XZ/5.2.7-GCCcore-12.2.0                                   netCDF-C++4/4.3.1-gompi-2021a
+   HDF5/1.10.2-foss-2018b                                            XZ/5.4.2-GCCcore-12.3.0                                   netCDF-Fortran/4.5.2-gompi-2020a
+   HDF5/1.10.5-gompi-2019a                                           XZ/5.4.4-GCCcore-13.2.0                                   netCDF-Fortran/4.5.3-gompi-2020b
+   HDF5/1.10.5-gompi-2019b                                           XZ/5.4.5-GCCcore-13.3.0                            (D)    netCDF-Fortran/4.5.3-gompi-2021a
+   HDF5/1.10.5-gompic-2019a                                          Xerces-C++/3.2.4-GCCcore-12.2.0                           netCDF-Fortran/4.5.3-gompi-2021b
+   HDF5/1.10.5-gompic-2019b                                          Xerces-C++/3.2.4-GCCcore-12.3.0                    (D)    netCDF-Fortran/4.5.3-gompic-2020b
+   HDF5/1.10.6-gompi-2020a                                           Xvfb/1.20.13-GCCcore-11.2.0                               netCDF-Fortran/4.5.3-iimpi-2021b
+   HDF5/1.10.7-gompi-2020b                                           Xvfb/21.1.6-GCCcore-12.2.0                         (D)    netCDF-Fortran/4.6.0-gompi-2022a
+   HDF5/1.10.7-gompi-2021a                                           Yambo/5.1.2-intel-2021b                                   netCDF-Fortran/4.6.0-iimpi-2022a
+   HDF5/1.10.7-gompic-2020b                                          Yasm/1.3.0-GCCcore-9.3.0                                  netCDF-Fortran/4.6.1-gompi-2023a
+   HDF5/1.10.7-iimpi-2021a                                           Yasm/1.3.0-GCCcore-10.2.0                                 netCDF-Fortran/4.6.1-gompi-2024a                     (D)
+   HDF5/1.12.0-iimpi-2021a                                           Yasm/1.3.0-GCCcore-10.3.0                                 netCDF/4.7.4-gompi-2020a
+   HDF5/1.12.1-foss-2020a                                            Yasm/1.3.0-GCCcore-11.2.0                                 netCDF/4.7.4-gompi-2020b
+   HDF5/1.12.1-gompi-2021b                                           Yasm/1.3.0-GCCcore-11.3.0                                 netCDF/4.7.4-gompic-2020b
+   HDF5/1.12.1-iimpi-2021b                                           Yasm/1.3.0-GCCcore-12.3.0                          (D)    netCDF/4.8.0-gompi-2021a
+   HDF5/1.12.2-gompi-2022a                                           Z3/4.8.10-GCCcore-10.2.0                                  netCDF/4.8.1-gompi-2021b
+   HDF5/1.12.2-iimpi-2022a                                           Z3/4.8.12-GCCcore-11.2.0                                  netCDF/4.8.1-iimpi-2021b
+   HDF5/1.12.2-NVHPC-22.7-CUDA-11.7.0-serial                         Z3/4.10.2-GCCcore-11.3.0                           (D)    netCDF/4.9.0-gompi-2022a
+   HDF5/1.12.2-NVHPC-22.7-CUDA-11.7.0                                ZeroMQ/4.3.4-GCCcore-11.3.0                               netCDF/4.9.0-gompi-2022b
+   HDF5/1.13.1-gompi-2022a                                           Zip/3.0-GCCcore-8.3.0                                     netCDF/4.9.0-iimpi-2022a
+   HDF5/1.13.1-iimpi-2022a                                           Zip/3.0-GCCcore-10.2.0                                    netCDF/4.9.2-gompi-2023a
+   HDF5/1.14.0-gompi-2022b                                           Zip/3.0-GCCcore-10.3.0                                    netCDF/4.9.2-gompi-2024a                             (D)
+   HDF5/1.14.0-gompi-2023a                                           Zip/3.0-GCCcore-11.2.0                                    nettle/3.3-GCCcore-6.4.0
+   HDF5/1.14.5-gompi-2024a                                 (D)       Zip/3.0-GCCcore-11.3.0                             (D)    nettle/3.4-foss-2018b
+   HH-suite/3.3.0-gompi-2021a                                        ant/1.10.11-Java-11                                       nettle/3.5.1-GCCcore-8.3.0
+   HH-suite/3.3.0-gompi-2021b                                        arax/0.1-foss-2022a                                       nettle/3.7.3-GCCcore-11.2.0
+   HH-suite/3.3.0-gompi-2022a                              (D)       archspec/0.1.0-GCCcore-9.3.0-Python-3.8.2                 nettle/3.8.1-GCCcore-12.2.0                          (D)
+   HMMER/3.3.2-gompi-2021a                                           archspec/0.1.3-GCCcore-11.2.0                      (D)    networkx/2.3-foss-2019a-Python-3.7.2
+   HMMER/3.3.2-gompi-2021b                                           arpack-ng/3.8.0-foss-2022b                                networkx/2.4-foss-2020a-Python-3.8.2
+   HMMER/3.3.2-gompi-2022a                                           arpack-ng/3.9.0-foss-2023a                         (D)    networkx/2.5-fosscuda-2020b
+   HMMER/3.4-gompi-2023a                                   (D)       arrow-R/6.0.0.2-foss-2021b-R-4.1.2                        networkx/2.5.1-foss-2021a
+   HPL/2.3-foss-2019a                                                at-spi2-atk/2.38.0-GCCcore-11.2.0                         networkx/2.6.3-foss-2021b
+   HPL/2.3-foss-2023a                                      (D)       at-spi2-atk/2.38.0-GCCcore-12.2.0                  (D)    networkx/2.8.4-foss-2022a
+   HarfBuzz/2.6.4-GCCcore-9.3.0                                      at-spi2-core/2.40.3-GCCcore-11.2.0                        networkx/3.1-gfbf-2023a
+   HarfBuzz/2.6.7-GCCcore-10.2.0                                     at-spi2-core/2.46.0-GCCcore-12.2.0                 (D)    networkx/3.2.1-gfbf-2023b                            (D)
+   HarfBuzz/2.8.1-GCCcore-10.3.0                                     attr/2.5.1-GCCcore-11.2.0                                 nlohmann_json/3.11.2-GCCcore-12.2.0
+   HarfBuzz/2.8.2-GCCcore-11.2.0                                     binutils/2.26                                             nlohmann_json/3.11.2-GCCcore-12.3.0                  (D)
+   HarfBuzz/4.2.1-GCCcore-11.3.0                                     binutils/2.27                                             nnU-Net/1.7.0-fosscuda-2020b
+   HarfBuzz/5.3.1-GCCcore-12.2.0                                     binutils/2.28                                             nodejs/14.17.6-GCCcore-11.2.0
+   HarfBuzz/5.3.1-GCCcore-12.3.0                           (D)       binutils/2.30-GCCcore-7.3.0                               nodejs/16.15.1-GCCcore-11.3.0
+   Highway/1.0.3-GCCcore-12.2.0                                      binutils/2.30                                             nodejs/18.12.1-GCCcore-12.2.0
+   Horovod/0.22.1-fosscuda-2020b-TensorFlow-2.5.0                    binutils/2.31.1-GCCcore-8.2.0                             nodejs/18.17.1-GCCcore-12.3.0                        (D)
+   Hypre/2.21.0-foss-2021a                                           binutils/2.31.1                                           nsync/1.24.0-GCCcore-8.3.0
+   Hypre/2.24.0-intel-2021b                                          binutils/2.32-GCCcore-8.3.0                               nsync/1.24.0-GCCcore-10.2.0
+   Hypre/2.29.0-foss-2023a                                 (D)       binutils/2.32                                             nsync/1.24.0-GCCcore-10.3.0
+   ICU/64.2-GCCcore-8.3.0                                            binutils/2.34-GCCcore-9.3.0                               nsync/1.24.0-GCCcore-11.2.0
+   ICU/66.1-GCCcore-9.3.0                                            binutils/2.34                                             nsync/1.25.0-GCCcore-11.3.0                          (D)
+   ICU/67.1-GCCcore-10.2.0                                           binutils/2.35-GCCcore-10.2.0                              numactl/2.0.11-GCCcore-7.3.0
+   ICU/69.1-GCCcore-10.3.0                                           binutils/2.35                                             numactl/2.0.12-GCCcore-8.2.0
+   ICU/69.1-GCCcore-11.2.0                                           binutils/2.36.1-GCCcore-10.3.0                            numactl/2.0.12-GCCcore-8.3.0
+   ICU/71.1-GCCcore-11.3.0                                           binutils/2.36.1                                           numactl/2.0.13-GCCcore-9.3.0
+   ICU/72.1-GCCcore-12.2.0                                           binutils/2.37-GCCcore-11.2.0                              numactl/2.0.13-GCCcore-10.2.0
+   ICU/73.2-GCCcore-12.3.0                                           binutils/2.37                                             numactl/2.0.14-GCCcore-10.3.0
+   ICU/74.1-GCCcore-13.2.0                                 (D)       binutils/2.38-GCCcore-11.3.0                              numactl/2.0.14-GCCcore-11.2.0
+   IDBA-UD/1.1.3-GCC-11.2.0                                          binutils/2.38                                             numactl/2.0.14-GCCcore-11.3.0
+   IPython/8.5.0-GCCcore-11.3.0                                      binutils/2.39-GCCcore-12.2.0                              numactl/2.0.16-GCCcore-12.2.0
+   ISL/0.24-GCCcore-11.3.0                                           binutils/2.39                                             numactl/2.0.16-GCCcore-12.3.0
+   ITK/5.2.1-fosscuda-2020b                                          binutils/2.40-GCCcore-12.3.0                              numactl/2.0.16-GCCcore-13.2.0
+   ImageMagick/7.0.10-35-GCCcore-10.2.0                              binutils/2.40-GCCcore-13.2.0                              numactl/2.0.18-GCCcore-13.3.0
+   ImageMagick/7.1.0-4-GCCcore-11.2.0                                binutils/2.40                                             numactl/2.0.19-GCCcore-14.2.0                        (D)
+   ImageMagick/7.1.0-53-GCCcore-12.2.0                     (D)       binutils/2.42-GCCcore-13.3.0                              occt/7.5.0-foss-2021a
+   Imath/3.1.6-GCCcore-12.2.0                                        binutils/2.42-GCCcore-14.2.0                              patchelf/0.18.0-GCCcore-12.3.0
+   Imath/3.1.7-GCCcore-12.3.0                              (D)       binutils/2.42                                      (D)    patchelf/0.18.0-GCCcore-13.2.0
+   JasPer/2.0.14-GCCcore-9.3.0                                       bokeh/2.2.3-fosscuda-2020b                                patchelf/0.18.0-GCCcore-13.3.0                       (D)
+   JasPer/2.0.14-GCCcore-10.2.0                                      bzip2/1.0.6-GCCcore-6.4.0                                 pixman/0.38.4-GCCcore-9.3.0
+   JasPer/2.0.24-GCCcore-10.2.0                                      bzip2/1.0.6-GCCcore-7.3.0                                 pixman/0.40.0-GCCcore-10.2.0
+   JasPer/2.0.28-GCCcore-10.3.0                                      bzip2/1.0.6-GCCcore-8.2.0                                 pixman/0.40.0-GCCcore-10.3.0
+   JasPer/2.0.33-GCCcore-11.2.0                                      bzip2/1.0.8-GCCcore-8.3.0                                 pixman/0.40.0-GCCcore-11.2.0
+   JasPer/2.0.33-GCCcore-11.3.0                                      bzip2/1.0.8-GCCcore-9.3.0                                 pixman/0.40.0-GCCcore-11.3.0
+   JasPer/4.0.0-GCCcore-12.2.0                                       bzip2/1.0.8-GCCcore-10.2.0                                pixman/0.42.2-GCCcore-12.2.0
+   JasPer/4.0.0-GCCcore-12.3.0                                       bzip2/1.0.8-GCCcore-10.3.0                                pixman/0.42.2-GCCcore-12.3.0                         (D)
+   JasPer/4.2.4-GCCcore-13.3.0                             (D)       bzip2/1.0.8-GCCcore-11.2.0                                pkg-config/0.29.2-GCCcore-6.4.0
+   Java/1.8.0_162                                                    bzip2/1.0.8-GCCcore-11.3.0                                pkg-config/0.29.2-GCCcore-7.3.0
+   Java/1.8.0_202                                          (1.8)     bzip2/1.0.8-GCCcore-12.2.0                                pkg-config/0.29.2-GCCcore-8.2.0
+   Java/11.0.2                                             (D:11)    bzip2/1.0.8-GCCcore-12.3.0                                pkg-config/0.29.2-GCCcore-8.3.0
+   JsonCpp/1.9.3-GCCcore-8.3.0                                       bzip2/1.0.8-GCCcore-13.2.0                                pkg-config/0.29.2-GCCcore-9.3.0
+   JsonCpp/1.9.4-GCCcore-10.2.0                                      bzip2/1.0.8-GCCcore-13.3.0                                pkg-config/0.29.2-GCCcore-10.2.0
+   JsonCpp/1.9.4-GCCcore-10.3.0                                      bzip2/1.0.8-GCCcore-14.2.0                         (D)    pkg-config/0.29.2-GCCcore-10.3.0
+   JsonCpp/1.9.4-GCCcore-11.2.0                                      cURL/7.63.0-GCCcore-8.2.0                                 pkg-config/0.29.2-GCCcore-11.2.0                     (D)
+   JsonCpp/1.9.5-GCCcore-11.3.0                            (D)       cURL/7.66.0-GCCcore-8.3.0                                 pkgconf/1.8.0-GCCcore-11.2.0
+   Julia/1.6.5-linux-x86_64                                          cURL/7.69.1-GCCcore-9.3.0                                 pkgconf/1.8.0-GCCcore-11.3.0
+   Julia/1.7.2-linux-x86_64                                          cURL/7.72.0-GCCcore-10.2.0                                pkgconf/1.8.0
+   Julia/1.9.3-linux-x86_64                                          cURL/7.76.0-GCCcore-10.3.0                                pkgconf/1.9.3-GCCcore-10.3.0
+   Julia/1.11.3-linux-x86_64                               (D)       cURL/7.78.0-GCCcore-11.2.0                                pkgconf/1.9.3-GCCcore-12.2.0
+   JupyterLab/3.5.0-GCCcore-11.3.0                                   cURL/7.83.0-GCCcore-11.3.0                                pkgconf/1.9.5-GCCcore-12.3.0
+   KaHIP/3.14-gompi-2022a                                            cURL/7.86.0-GCCcore-12.2.0                                pkgconf/2.0.3-GCCcore-13.2.0
+   Kalign/3.3.1-GCCcore-10.3.0                                       cURL/8.0.1-GCCcore-12.3.0                                 pkgconf/2.2.0-GCCcore-13.3.0
+   Kalign/3.3.2-GCCcore-11.2.0                                       cURL/8.3.0-GCCcore-13.2.0                                 pkgconf/2.3.0-GCCcore-14.2.0                         (D)
+   Kalign/3.3.5-GCCcore-11.3.0                             (D)       cURL/8.7.1-GCCcore-13.3.0                          (D)    pkgconfig/1.5.1-GCCcore-8.2.0-python
+   LAME/3.100-GCCcore-9.3.0                                          cairo/1.16.0-GCCcore-9.3.0                                pkgconfig/1.5.1-GCCcore-8.3.0-Python-3.7.4
+   LAME/3.100-GCCcore-10.2.0                                         cairo/1.16.0-GCCcore-10.2.0                               pkgconfig/1.5.1-GCCcore-9.3.0-Python-3.8.2
+   LAME/3.100-GCCcore-10.3.0                                         cairo/1.16.0-GCCcore-10.3.0                               pkgconfig/1.5.1-GCCcore-10.2.0-python
+   LAME/3.100-GCCcore-11.2.0                                         cairo/1.16.0-GCCcore-11.2.0                               pkgconfig/1.5.4-GCCcore-10.3.0-python
+   LAME/3.100-GCCcore-11.3.0                                         cairo/1.17.4-GCCcore-11.3.0                               pkgconfig/1.5.5-GCCcore-11.2.0-python
+   LAME/3.100-GCCcore-12.2.0                                         cairo/1.17.4-GCCcore-12.2.0                               pkgconfig/1.5.5-GCCcore-11.3.0-python                (D)
+   LAME/3.100-GCCcore-12.3.0                               (D)       cairo/1.17.8-GCCcore-12.3.0                        (D)    poetry/1.5.1-GCCcore-12.3.0
+   LAMMPS/3Mar2020-foss-2020a-Python-3.8.2-kokkos                    canu/2.2-GCCcore-11.2.0                                   poetry/1.6.1-GCCcore-13.2.0
+   LAMMPS/23Jun2022-foss-2021b-kokkos-CUDA-11.4.1                    canu/2.2-GCCcore-11.3.0                            (D)    poetry/1.8.3-GCCcore-13.3.0                          (D)
+   LAMMPS/23Jun2022-foss-2021b-kokkos                      (D)       cffi/1.15.1-GCCcore-12.3.0                                popt/1.18-GCCcore-11.3.0
+   LERC/4.0.0-GCCcore-12.2.0                                         cffi/1.15.1-GCCcore-13.2.0                                pplacer/1.1.alpha19
+   LERC/4.0.0-GCCcore-12.3.0                               (D)       cffi/1.16.0-GCCcore-13.3.0                         (D)    prodigal/2.6.3-GCCcore-11.2.0
+   LLVM/6.0.0-GCCcore-7.3.0                                          cpio/2.15-GCCcore-12.2.0                                  prodigal/2.6.3-GCCcore-12.3.0                        (D)
+   LLVM/9.0.0-GCCcore-8.3.0                                          cppy/1.1.0-GCCcore-11.2.0                                 protobuf-python/3.10.0-fosscuda-2019b-Python-3.7.4
+   LLVM/9.0.1-GCCcore-9.3.0                                          cppy/1.2.1-GCCcore-11.3.0                                 protobuf-python/3.14.0-GCCcore-10.2.0
+   LLVM/11.0.0-GCCcore-10.2.0                                        cppy/1.2.1-GCCcore-12.3.0                          (D)    protobuf-python/3.17.3-GCCcore-10.3.0
+   LLVM/11.1.0-GCCcore-10.3.0                                        cryptography/41.0.1-GCCcore-12.3.0                        protobuf-python/3.17.3-GCCcore-11.2.0
+   LLVM/12.0.1-GCCcore-11.2.0                                        cryptography/41.0.5-GCCcore-13.2.0                        protobuf-python/3.19.4-GCCcore-11.3.0                (D)
+   LLVM/14.0.3-GCCcore-11.3.0                                        cryptography/42.0.8-GCCcore-13.3.0                 (D)    protobuf/3.10.0-GCCcore-8.3.0
+   LLVM/15.0.5-GCCcore-12.2.0                                        cuDNN/8.0.4.30-CUDA-11.1.1                                protobuf/3.14.0-GCCcore-10.2.0
+   LLVM/16.0.6-GCCcore-12.3.0                              (D)       cuDNN/8.2.1.32-CUDA-11.3.1                                protobuf/3.17.3-GCCcore-10.3.0
+   LMDB/0.9.24-GCCcore-8.3.0                                         cuDNN/8.2.2.26-CUDA-11.4.1                                protobuf/3.17.3-GCCcore-11.2.0
+   LMDB/0.9.24-GCCcore-9.3.0                                         cuDNN/8.4.1.50-CUDA-11.7.0                                protobuf/3.19.4-GCCcore-11.3.0
+   LMDB/0.9.24-GCCcore-10.2.0                                        cuDNN/8.7.0.84-CUDA-11.8.0                                protobuf/23.0-GCCcore-12.2.0                         (D)
+   LMDB/0.9.28-GCCcore-10.3.0                                        cuDNN/8.9.7.29-CUDA-12.3.0                                pscom/5.6-default-GCCcore-11.3.0
+   LMDB/0.9.29-GCCcore-11.2.0                                        cuDNN/9.5.0.50-CUDA-12.8.0                         (D)    pullseq/1.0.2-GCCcore-11.2.0
+   LMDB/0.9.29-GCCcore-11.3.0                                        dask/2021.2.0-fosscuda-2020b                              py3Dmol/2.0.1.post1-GCCcore-11.3.0
+   LMDB/0.9.29-GCCcore-12.2.0                              (D)       deepdiff/4.0.6-GCCcore-8.2.0-Python-3.7.2                 pybind11/2.4.3-GCCcore-8.3.0-Python-3.7.4
+   LibTIFF/4.0.10-GCCcore-8.3.0                                      dicom2nifti/2.3.0-fosscuda-2020b                          pybind11/2.4.3-GCCcore-9.3.0-Python-3.8.2
+   LibTIFF/4.1.0-GCCcore-10.2.0                                      dill/0.3.6-GCCcore-11.3.0                                 pybind11/2.6.0-GCCcore-10.2.0
+   LibTIFF/4.2.0-GCCcore-10.3.0                                      dlb/3.4-gompi-2023b                                       pybind11/2.6.2-GCCcore-10.3.0
+   LibTIFF/4.3.0-GCCcore-11.2.0                                      dm-tree/0.1.8-GCCcore-11.3.0                              pybind11/2.7.1-GCCcore-11.2.0
+   LibTIFF/4.3.0-GCCcore-11.3.0                                      dotNET-SDK/3.1.300-linux-x64                              pybind11/2.9.2-GCCcore-11.3.0
+   LibTIFF/4.4.0-GCCcore-12.2.0                                      double-conversion/3.1.4-GCCcore-8.3.0                     pybind11/2.10.3-GCCcore-12.2.0
+   LibTIFF/4.5.0-GCCcore-12.3.0                            (D)       double-conversion/3.1.5-GCCcore-9.3.0                     pybind11/2.11.1-GCCcore-12.3.0
+   Libint/2.6.0-GCC-10.2.0-lmax-6-cp2k                               double-conversion/3.1.5-GCCcore-10.2.0                    pybind11/2.11.1-GCCcore-13.2.0                       (D)
+   Libint/2.6.0-GCC-10.3.0-lmax-6-cp2k                               double-conversion/3.1.5-GCCcore-10.3.0                    pydantic/1.10.13-GCCcore-12.3.0
+   Libint/2.7.2-GCC-12.3.0-lmax-6-cp2k                     (D)       double-conversion/3.1.5-GCCcore-11.2.0                    pydicom/2.1.2-GCCcore-10.2.0
+   LittleCMS/2.11-GCCcore-10.2.0                                     double-conversion/3.2.0-GCCcore-11.3.0                    pytest-rerunfailures/11.1-GCCcore-11.3.0
+   LittleCMS/2.12-GCCcore-11.2.0                                     double-conversion/3.3.0-GCCcore-12.3.0             (D)    pytest-shard/0.1.2-GCCcore-11.3.0
+   LittleCMS/2.14-GCCcore-12.2.0                           (D)       ecCodes/2.20.0-gompi-2020b                                pytest-xdist/2.3.0-GCCcore-10.2.0
+   Lua/5.3.5-GCCcore-9.3.0                                           elfutils/0.183-GCCcore-10.2.0                             pytest-xdist/2.3.0-GCCcore-10.3.0
+   Lua/5.3.5-GCCcore-10.2.0                                          elfutils/0.185-GCCcore-11.2.0                             pytest-xdist/2.5.0-GCCcore-11.2.0
+   Lua/5.4.2-GCCcore-10.2.0                                          elfutils/0.187-GCCcore-11.3.0                             pytest-xdist/2.5.0-GCCcore-11.3.0                    (D)
+   Lua/5.4.3-GCCcore-10.3.0                                          elfutils/0.190-GCCcore-13.2.0                      (D)    re2c/1.3-GCCcore-9.3.0
+   Lua/5.4.3-GCCcore-11.2.0                                          expat/2.2.5-GCCcore-7.3.0                                 re2c/2.0.3-GCCcore-10.2.0
+   Lua/5.4.4-GCCcore-11.3.0                                          expat/2.2.6-GCCcore-8.2.0                                 re2c/2.1.1-GCCcore-10.3.0
+   Lua/5.4.6-GCCcore-12.3.0                                (D)       expat/2.2.7-GCCcore-8.3.0                                 re2c/2.2-GCCcore-11.2.0
+   M4/1.4.17                                                         expat/2.2.9-GCCcore-9.3.0                                 re2c/2.2-GCCcore-11.3.0
+   M4/1.4.18-GCCcore-6.4.0                                           expat/2.2.9-GCCcore-10.2.0                                re2c/3.1-GCCcore-12.3.0                              (D)
+   M4/1.4.18-GCCcore-7.3.0                                           expat/2.2.9-GCCcore-10.3.0                                scikit-build-core/0.5.0-GCCcore-12.3.0
+   M4/1.4.18-GCCcore-8.2.0                                           expat/2.4.1-GCCcore-11.2.0                                scikit-build-core/0.9.3-GCCcore-13.2.0               (D)
+   M4/1.4.18-GCCcore-8.3.0                                           expat/2.4.8-GCCcore-11.3.0                                scikit-build/0.10.0-foss-2020a-Python-3.8.2
+   M4/1.4.18-GCCcore-9.3.0                                           expat/2.4.9-GCCcore-12.2.0                                scikit-build/0.11.1-fosscuda-2020b
+   M4/1.4.18-GCCcore-10.2.0                                          expat/2.5.0-GCCcore-12.3.0                                scikit-build/0.11.1-GCCcore-10.3.0
+   M4/1.4.18-GCCcore-10.3.0                                          expat/2.5.0-GCCcore-13.2.0                                scikit-build/0.11.1-GCCcore-11.2.0
+   M4/1.4.18                                                         expat/2.6.2-GCCcore-13.3.0                         (D)    scikit-build/0.15.0-GCCcore-11.3.0
+   M4/1.4.19-GCCcore-11.2.0                                          expecttest/0.1.3-GCCcore-10.3.0                           scikit-build/0.17.6-GCCcore-12.3.0
+   M4/1.4.19-GCCcore-11.3.0                                          expecttest/0.1.3-GCCcore-11.3.0                    (D)    scikit-build/0.17.6-GCCcore-13.2.0
+   M4/1.4.19-GCCcore-12.2.0                                          ffnvcodec/11.1.5.2                                        scikit-build/0.17.6-GCCcore-13.3.0                   (D)
+   M4/1.4.19-GCCcore-12.3.0                                          ffnvcodec/12.0.16.0                                (D)    scikit-image/0.18.1-fosscuda-2020b
+   M4/1.4.19-GCCcore-13.2.0                                          flatbuffers-python/1.12-GCCcore-8.3.0-Python-3.7.4        scikit-learn/0.23.2-foss-2020b
+   M4/1.4.19-GCCcore-13.3.0                                          flatbuffers-python/1.12-GCCcore-10.2.0                    scikit-learn/0.23.2-fosscuda-2020b                   (D)
+   M4/1.4.19-GCCcore-14.2.0                                          flatbuffers-python/2.0-GCCcore-10.3.0                     setuptools-rust/1.6.0-GCCcore-12.3.0
+   M4/1.4.19                                               (D)       flatbuffers-python/2.0-GCCcore-11.2.0                     setuptools-rust/1.8.0-GCCcore-13.2.0
+   MAQAO/2.21.1                                                      flatbuffers-python/2.0-GCCcore-11.3.0              (D)    setuptools-rust/1.9.0-GCCcore-13.3.0                 (D)
+   MEGAHIT/1.2.9-GCCcore-11.2.0                                      flatbuffers/1.12.0-GCCcore-8.3.0                          snappy/1.1.7-GCCcore-8.3.0
+   MERIC/3.0.2-gompi-2023b-READEX                                    flatbuffers/1.12.0-GCCcore-10.2.0                         snappy/1.1.8-GCCcore-9.3.0
+   METIS/5.1.0-foss-2018b                                            flatbuffers/2.0.0-GCCcore-10.3.0                          snappy/1.1.8-GCCcore-10.2.0
+   METIS/5.1.0-GCCcore-6.4.0                                         flatbuffers/2.0.0-GCCcore-11.2.0                          snappy/1.1.8-GCCcore-10.3.0
+   METIS/5.1.0-GCCcore-9.3.0                                         flatbuffers/2.0.7-GCCcore-11.3.0                   (D)    snappy/1.1.9-GCCcore-11.2.0
+   METIS/5.1.0-GCCcore-10.2.0                                        flex/2.6.0                                                snappy/1.1.9-GCCcore-11.3.0
+   METIS/5.1.0-GCCcore-10.3.0                                        flex/2.6.3                                                snappy/1.1.10-GCCcore-12.3.0                         (D)
+   METIS/5.1.0-GCCcore-11.2.0                                        flex/2.6.4-GCCcore-6.4.0                                  spglib-python/1.16.0-foss-2020b
+   METIS/5.1.0-GCCcore-11.3.0                                        flex/2.6.4-GCCcore-7.3.0                                  spglib-python/1.16.3-foss-2021b
+   METIS/5.1.0-GCCcore-12.3.0                                        flex/2.6.4-GCCcore-8.2.0                                  spglib-python/2.0.0-foss-2022a
+   METIS/5.1.0-GCCcore-13.2.0                              (D)       flex/2.6.4-GCCcore-8.3.0                                  spglib-python/2.1.0-gfbf-2023a                       (D)
+   MKL/mkl_2019.4.243                                                flex/2.6.4-GCCcore-9.3.0                                  sympy/1.10.1-foss-2022a
+   MPC/1.2.1-GCCcore-11.3.0                                          flex/2.6.4-GCCcore-10.2.0                                 tbb/2019_U9-GCCcore-8.3.0
+   MPFR/3.1.5-GCCcore-6.4.0                                          flex/2.6.4-GCCcore-10.3.0                                 tbb/2020.1-GCCcore-9.3.0
+   MPFR/4.0.1-GCCcore-7.3.0                                          flex/2.6.4-GCCcore-11.2.0                                 tbb/2020.2-GCCcore-8.3.0
+   MPFR/4.0.2-GCCcore-9.3.0                                          flex/2.6.4-GCCcore-11.3.0                                 tbb/2020.3-GCCcore-10.2.0
+   MPFR/4.1.0-GCCcore-10.2.0                                         flex/2.6.4-GCCcore-12.2.0                                 tbb/2020.3-GCCcore-10.3.0
+   MPFR/4.1.0-GCCcore-10.3.0                                         flex/2.6.4-GCCcore-12.3.0                                 tbb/2020.3-GCCcore-11.2.0                            (D)
+   MPFR/4.1.0-GCCcore-11.2.0                                         flex/2.6.4-GCCcore-13.2.0                                 tcsh/6.24.01-GCCcore-11.3.0
+   MPFR/4.1.0-GCCcore-11.3.0                                         flex/2.6.4-GCCcore-13.3.0                                 tcsh/6.24.13-GCCcore-13.3.0                          (D)
+   MPFR/4.2.0-GCCcore-12.2.0                                         flex/2.6.4-GCCcore-14.2.0                                 tensorboardX/2.5.1-foss-2022a
+   MPFR/4.2.0-GCCcore-12.3.0                               (D)       flex/2.6.4                                         (D)    texinfo/6.7-GCCcore-8.3.0
+   MPICH/3.4.2-GCC-10.3.0                                            flit/3.9.0-GCCcore-12.3.0                                 texinfo/6.7-GCCcore-9.3.0                            (D)
+   MPICH/4.0.2-GCC-10.3.0                                  (D)       flit/3.9.0-GCCcore-13.2.0                                 tokenizers/0.13.3-GCCcore-12.2.0
+   MUMPS/5.4.0-foss-2021a-metis                                      flit/3.9.0-GCCcore-13.3.0                          (D)    torchvision/0.11.1-foss-2021a-CUDA-11.3.1
+   MUMPS/5.4.1-intel-2021b-metis                                     fontconfig/2.12.4-GCCcore-6.4.0                           torchvision/0.13.1-foss-2022a-CUDA-11.7.0            (D)
+   MUMPS/5.6.1-foss-2023a-metis                                      fontconfig/2.13.0-GCCcore-7.3.0                           tqdm/4.56.2-GCCcore-10.2.0
+   MUMPS/5.6.1-foss-2023b-metis                            (D)       fontconfig/2.13.1-GCCcore-8.3.0                           tqdm/4.64.0-GCCcore-11.3.0
+   MUMmer/4.0.0beta2-GCCcore-11.2.0                                  fontconfig/2.13.92-GCCcore-9.3.0                          tqdm/4.64.1-GCCcore-12.2.0
+   MUST/1.10.0-gompi-2022a                                           fontconfig/2.13.92-GCCcore-10.2.0                         tqdm/4.66.1-GCCcore-12.3.0                           (D)
+   Mako/1.0.7-foss-2018b-Python-2.7.15                               fontconfig/2.13.93-GCCcore-10.3.0                         typing-extensions/3.7.4.3-GCCcore-8.3.0-Python-3.7.4
+   Mako/1.1.0-GCCcore-8.3.0                                          fontconfig/2.13.94-GCCcore-11.2.0                         typing-extensions/3.7.4.3-GCCcore-10.2.0
+   Mako/1.1.2-GCCcore-9.3.0                                          fontconfig/2.14.0-GCCcore-11.3.0                          typing-extensions/3.10.0.0-GCCcore-10.3.0
+   Mako/1.1.3-GCCcore-10.2.0                                         fontconfig/2.14.1-GCCcore-12.2.0                          typing-extensions/4.9.0-GCCcore-12.3.0               (D)
+   Mako/1.1.4-GCCcore-10.3.0                                         fontconfig/2.14.2-GCCcore-12.3.0                   (D)    utf8proc/2.6.1-GCCcore-11.2.0
+   Mako/1.1.4-GCCcore-11.2.0                                         foss/2018b                                                util-linux/2.32-GCCcore-7.3.0
+   Mako/1.2.0-GCCcore-11.3.0                                         foss/2019a                                                util-linux/2.34-GCCcore-8.3.0
+   Mako/1.2.4-GCCcore-12.2.0                                         foss/2019b                                                util-linux/2.35-GCCcore-9.3.0
+   Mako/1.2.4-GCCcore-12.3.0                               (D)       foss/2020a                                                util-linux/2.36-GCCcore-10.2.0
+   Mash/2.3-GCC-12.3.0                                               foss/2020b                                                util-linux/2.36-GCCcore-10.3.0
+   MaxBin/2.2.7-gompi-2021b                                          foss/2021a                                                util-linux/2.37-GCCcore-11.2.0
+   MaxQuant/2.4.2.0-GCCcore-11.2.0                                   foss/2021b                                                util-linux/2.38-GCCcore-11.3.0
+   MaxQuant/2.4.2.0                                        (D)       foss/2022a                                                util-linux/2.38.1-GCCcore-12.2.0
+   MedPy/0.4.0-fosscuda-2020b                                        foss/2022b                                                util-linux/2.39-GCCcore-12.3.0                       (D)
+   Mesa/18.1.1-foss-2018b                                            foss/2023a                                                virtualenv/20.23.1-GCCcore-12.3.0
+   Mesa/19.1.7-GCCcore-8.3.0                                         foss/2023b                                                virtualenv/20.24.6-GCCcore-13.2.0
+   Mesa/20.0.2-GCCcore-9.3.0                                         foss/2024a                                         (D)    virtualenv/20.26.2-GCCcore-13.3.0                    (D)
+   Mesa/20.2.1-GCCcore-10.2.0                                        fosscuda/2019a                                            wandb/0.13.4-GCCcore-11.3.0
+   Mesa/21.1.1-GCCcore-10.3.0                                        fosscuda/2019b                                            x264/20191217-GCCcore-9.3.0
+   Mesa/21.1.7-GCCcore-11.2.0                                        fosscuda/2020b                                     (D)    x264/20201026-GCCcore-10.2.0
+   Mesa/22.0.3-GCCcore-11.3.0                                        freetype/2.9.1-GCCcore-7.3.0                              x264/20210414-GCCcore-10.3.0
+   Mesa/22.2.4-GCCcore-12.2.0                                        freetype/2.10.1-GCCcore-8.3.0                             x264/20210613-GCCcore-11.2.0
+   Mesa/23.1.4-GCCcore-12.3.0                              (D)       freetype/2.10.1-GCCcore-9.3.0                             x264/20220620-GCCcore-11.3.0
+   Meson/0.51.2-GCCcore-8.3.0-Python-3.7.4                           freetype/2.10.3-GCCcore-10.2.0                            x264/20230226-GCCcore-12.3.0                         (D)
+   Meson/0.55.1-GCCcore-9.3.0-Python-3.8.2                           freetype/2.10.4-GCCcore-10.3.0                            x265/3.3-GCCcore-9.3.0
+   Meson/0.55.3-GCCcore-10.2.0                                       freetype/2.11.0-GCCcore-11.2.0                            x265/3.3-GCCcore-10.2.0
+   Meson/0.58.0-GCCcore-10.3.0                                       freetype/2.12.1-GCCcore-11.3.0                            x265/3.5-GCCcore-10.3.0
+   Meson/0.58.2-GCCcore-11.2.0                                       freetype/2.12.1-GCCcore-12.2.0                            x265/3.5-GCCcore-11.2.0
+   Meson/0.62.1-GCCcore-11.3.0                                       freetype/2.13.0-GCCcore-12.3.0                     (D)    x265/3.5-GCCcore-11.3.0
+   Meson/0.64.0-GCCcore-12.2.0                                       gc/7.6.12-GCCcore-9.3.0                                   x265/3.5-GCCcore-12.3.0                              (D)
+   Meson/1.1.1-GCCcore-12.3.0                                        gcccuda/2019a                                             xorg-macros/1.19.2-GCCcore-7.3.0
+   Meson/1.2.3-GCCcore-13.2.0                                        gcccuda/2019b                                             xorg-macros/1.19.2-GCCcore-8.2.0
+   Meson/1.4.0-GCCcore-13.3.0                              (D)       gcccuda/2020b                                      (D)    xorg-macros/1.19.2-GCCcore-8.3.0
+   MetaBAT/2.15-gompi-2021b                                          gettext/0.19.8                                            xorg-macros/1.19.2-GCCcore-9.3.0
+   MinPath/1.6-GCCcore-11.2.0                                        gettext/0.19.8.1-GCCcore-6.4.0                            xorg-macros/1.19.2-GCCcore-10.2.0
+   Molden/6.8-GCCcore-9.3.0                                          gettext/0.19.8.1-GCCcore-7.3.0                            xorg-macros/1.19.3-GCCcore-10.3.0
+   Molden/6.8-GCCcore-10.2.0                               (D)       gettext/0.19.8.1                                          xorg-macros/1.19.3-GCCcore-11.2.0
+   Mono/6.12.0.122-GCCcore-11.2.0                                    gettext/0.20.1-GCCcore-8.3.0                              xorg-macros/1.19.3-GCCcore-11.3.0
+   NAMD/2.14-foss-2020a-mpi                                          gettext/0.20.1-GCCcore-9.3.0                              xorg-macros/1.19.3-GCCcore-12.2.0
+   NAMD/2.14-foss-2020b-mpi                                          gettext/0.20.1                                            xorg-macros/1.20.0-GCCcore-12.3.0
+   NAMD/2.14-foss-2021a-mpi                                          gettext/0.21-GCCcore-10.2.0                               xorg-macros/1.20.0-GCCcore-13.2.0
+   NAMD/2.14-foss-2022a-mpi                                          gettext/0.21-GCCcore-10.3.0                               xorg-macros/1.20.1-GCCcore-13.3.0                    (D)
+   NAMD/2.14-foss-2023a-UCX-1.15.0                                   gettext/0.21-GCCcore-11.2.0                               xprop/1.2.5-GCCcore-10.2.0
+   NAMD/3.0-foss-2024a-mpi-nomemopt                                  gettext/0.21-GCCcore-11.3.0                               xprop/1.2.5-GCCcore-10.3.0                           (D)
+   NAMD/3.0-foss-2024a-mpi                                 (D)       gettext/0.21                                              xproto/7.0.31-GCCcore-9.3.0
+   NASM/2.14.02-GCCcore-8.3.0                                        gettext/0.21.1-GCCcore-12.2.0                             xxd/8.2.4220-GCCcore-11.2.0
+   NASM/2.14.02-GCCcore-9.3.0                                        gettext/0.21.1-GCCcore-12.3.0                             xxd/9.0.2112-GCCcore-12.3.0                          (D)
+   NASM/2.15.05-GCCcore-10.2.0                                       gettext/0.21.1                                            yaff/1.6.0-foss-2020a-Python-3.8.2
+   NASM/2.15.05-GCCcore-10.3.0                                       gettext/0.22-GCCcore-13.2.0                               zlib/1.2.8
+   NASM/2.15.05-GCCcore-11.2.0                                       gettext/0.22                                              zlib/1.2.11-GCCcore-7.3.0
+   NASM/2.15.05-GCCcore-11.3.0                                       gettext/0.22.5-GCCcore-13.3.0                             zlib/1.2.11-GCCcore-8.2.0
+   NASM/2.15.05-GCCcore-12.2.0                                       gettext/0.22.5                                     (D)    zlib/1.2.11-GCCcore-8.3.0
+   NASM/2.16.01-GCCcore-12.3.0                                       gfbf/2022b                                                zlib/1.2.11-GCCcore-9.3.0
+   NASM/2.16.01-GCCcore-13.2.0                             (D)       gfbf/2023a                                                zlib/1.2.11-GCCcore-10.2.0
+   NCCL/2.8.3-CUDA-11.1.1                                            gfbf/2023b                                         (D)    zlib/1.2.11-GCCcore-10.3.0
+   NCCL/2.8.3-GCCcore-10.2.0-CUDA-11.1.1                             giflib/5.2.1-GCCcore-8.3.0                                zlib/1.2.11-GCCcore-11.2.0
+   NCCL/2.10.3-GCCcore-10.3.0-CUDA-11.3.1                            giflib/5.2.1-GCCcore-10.2.0                               zlib/1.2.11
+   NCCL/2.10.3-GCCcore-11.2.0-CUDA-11.4.1                            giflib/5.2.1-GCCcore-10.3.0                               zlib/1.2.12-GCCcore-11.3.0
+   NCCL/2.12.12-GCCcore-11.3.0-CUDA-11.7.0                           giflib/5.2.1-GCCcore-11.2.0                               zlib/1.2.12-GCCcore-12.2.0
+   NCCL/2.22.3-GCCcore-13.3.0-CUDA-12.6.0                  (D)       giflib/5.2.1-GCCcore-11.3.0                               zlib/1.2.12
+   NCO/5.1.3-foss-2021a                                              giflib/5.2.1-GCCcore-12.2.0                               zlib/1.2.13-GCCcore-12.3.0
+   NLopt/2.7.0-GCCcore-11.2.0                                        giflib/5.2.1-GCCcore-12.3.0                        (D)    zlib/1.2.13-GCCcore-13.2.0
+   NLopt/2.7.1-GCCcore-12.2.0                              (D)       git/2.23.0-GCCcore-8.3.0-nodocs                           zlib/1.2.13
+   NSPR/4.20-GCCcore-7.3.0                                           git/2.23.0-GCCcore-8.3.0                                  zlib/1.3.1-GCCcore-13.3.0
+   NSPR/4.25-GCCcore-9.3.0                                           git/2.28.0-GCCcore-10.2.0-nodocs                          zlib/1.3.1-GCCcore-14.2.0
+   NSPR/4.30-GCCcore-10.3.0                                          git/2.32.0-GCCcore-10.3.0-nodocs                          zlib/1.3.1                                           (D)
+   NSPR/4.32-GCCcore-11.2.0                                          git/2.33.1-GCCcore-11.2.0-nodocs                          zstd/1.4.4-GCCcore-9.3.0
+   NSPR/4.34-GCCcore-11.3.0                                          git/2.36.0-GCCcore-11.3.0-nodocs                          zstd/1.4.5-GCCcore-10.2.0
+   NSPR/4.35-GCCcore-12.3.0                                (D)       git/2.38.1-GCCcore-12.2.0-nodocs                          zstd/1.4.9-GCCcore-10.3.0
+   NSS/3.39-GCCcore-7.3.0                                            git/2.41.0-GCCcore-12.3.0-nodocs                          zstd/1.5.0-GCCcore-11.2.0
+   NSS/3.51-GCCcore-9.3.0                                            git/2.42.0-GCCcore-13.2.0                                 zstd/1.5.2-GCCcore-11.3.0
+   NSS/3.65-GCCcore-10.3.0                                           git/2.45.1-GCCcore-13.3.0                          (D)    zstd/1.5.2-GCCcore-12.2.0
+   NSS/3.69-GCCcore-11.2.0                                           glibc/2.29-GCCcore-8.3.0                                  zstd/1.5.5-GCCcore-12.3.0
+   NSS/3.79-GCCcore-11.3.0                                           glibc/2.30-GCCcore-8.3.0                                  zstd/1.5.5-GCCcore-13.2.0
+   NSS/3.89.1-GCCcore-12.3.0                               (D)       glibc/2.31-GCCcore-9.3.0                           (D)    zstd/1.5.6-GCCcore-13.3.0                            (D)
+   NVHPC/20.11                                                       gmpy2/2.1.2-GCC-11.3.0
+   NVHPC/21.2                                                        gmsh/4.10.2-foss-2021a
+
+---------------------------------------------------------------------------------------------------- /usr/share/lmod/lmod/modulefiles/Core ----------------------------------------------------------------------------------------------------
+   lmod    settarg
+
+-------------------------------------------------------------------------- This is a list of module extensions. Use "module --nx avail ..." to not show extensions. ---------------------------------------------------------------------------
+    Babel                             (E)     cachy              (E)     flit_scm                (E)     keyrings.alt   (E)     ply                  (E)     regex                   (E)     sphinxcontrib_serializinghtml (E)
+    Bottleneck                        (E)     certifi            (E)     fsspec                  (E)     liac-arff      (E)     poetry               (E)     requests                (E)     sphinxcontrib_websupport      (E)
+    Cython                            (E)     cffi               (E)     future                  (E)     lockfile       (E)     poetry_core          (E)     requests-toolbelt       (E)     tabulate                      (E)
+    File::Path                        (E)     chardet            (E)     gast                    (E)     markdown-it-py (E)     poetry_plugin_export (E)     rich                    (E)     threadpoolctl                 (E)
+    File::Spec                        (E)     charset-normalizer (E)     glob2                   (E)     mdurl          (E)     pooch                (E)     rich-click              (E)     toml                          (E)
+    Getopt::Long                      (E)     cleo               (E)     gmxapi                  (E)     meson-python   (E)     psutil               (E)     scandir                 (E)     tomli                         (E)
+    Jinja2                            (E)     click              (E)     hatch-requirements-txt  (E)     mock           (E)     ptyprocess           (E)     scikit_build            (E)     tomli_w                       (E)
+    MarkupSafe                        (E)     cloudpickle        (E)     hatch_fancy_pypi_readme (E)     more-itertools (E)     py                   (E)     scikit_build_core       (E)     tomlkit                       (E)
+    PyNaCl                            (E)     colorama           (E)     hatch_vcs               (E)     mpi4py         (E)     py_expression_eval   (E)     scipy                   (E)     trove_classifiers             (E)
+    Pygments                          (E)     commonmark         (E)     hatchling               (E)     mpmath         (E)     pyasn1               (E)     semantic_version        (E)     typing_extensions             (E)
+    SecretStorage                     (E)     crashtest          (E)     html5lib                (E)     msgpack        (E)     pycparser            (E)     setuptools-rust         (E)     tzdata                        (E)
+    Text::ParseWords                  (E)     deap               (E)     idna                    (E)     netaddr        (E)     pycryptodome         (E)     setuptools-scm          (E)     ujson                         (E)
+    alabaster                         (E)     decorator          (E)     imagesize               (E)     netifaces      (E)     pydevtool            (E)     shellingham             (E)     urllib3                       (E)
+    appdirs                           (E)     distlib            (E)     importlib_metadata      (E)     numexpr        (E)     pylev                (E)     simplegeneric           (E)     versioneer                    (E)
+    asn1crypto                        (E)     distro             (E)     importlib_resources     (E)     numpy          (E)     pyparsing            (E)     simplejson              (E)     virtualenv                    (E)
+    atomicwrites                      (E)     docopt             (E)     iniconfig               (E)     packaging      (E)     pyproject-metadata   (E)     six                     (E)     wcwidth                       (E)
+    attrs                             (E)     docutils           (E)     installer               (E)     pandas         (E)     pyproject_hooks      (E)     snowballstemmer         (E)     webencodings                  (E)
+    backports.entry-points-selectable (E)     doit               (E)     intervaltree            (E)     pastel         (E)     pyrsistent           (E)     sortedcontainers        (E)     xlrd                          (E)
+    backports.functools_lru_cache     (E)     dulwich            (E)     intreehooks             (E)     pathlib2       (E)     pytest               (E)     sphinx                  (E)     zipfile36                     (E)
+    beniget                           (E)     ecdsa              (E)     ipaddress               (E)     pathspec       (E)     pytest-xdist         (E)     sphinx-bootstrap-theme  (E)     zipp                          (E)
+    bitarray                          (E)     editables          (E)     jaraco.classes          (E)     pbr            (E)     python-dateutil      (E)     sphinxcontrib-jsmath    (E)
+    bitstring                         (E)     exceptiongroup     (E)     jeepney                 (E)     pexpect        (E)     pythran              (E)     sphinxcontrib_applehelp (E)
+    blist                             (E)     execnet            (E)     joblib                  (E)     pkginfo        (E)     pytoml               (E)     sphinxcontrib_devhelp   (E)
+    build                             (E)     filelock           (E)     jsonschema              (E)     platformdirs   (E)     pytz                 (E)     sphinxcontrib_htmlhelp  (E)
+    cachecontrol                      (E)     flit               (E)     keyring                 (E)     pluggy         (E)     rapidfuzz            (E)     sphinxcontrib_qthelp    (E)
+
+These extensions cannot be loaded directly, use "module spider extension_name" for more information.
+
+  Where:
+   Aliases:  Aliases exist: foo/1.2.3 (1.2) means that "module load foo/1.2" will load foo/1.2.3
+   D:        Default Module
+   E:        Extension that is provided by another module
+
+If the avail list is too long consider trying:
+
+"module --default avail" or "ml -d av" to just list the default modules.
+"module overview" or "ml ov" to display the number of modules for each name.
+
+Use "module spider" to find all possible modules and extensions.
+Use "module keyword key1 key2 ..." to search for all possible modules matching any of the "keys".
+
+

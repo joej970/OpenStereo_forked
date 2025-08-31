@@ -60,9 +60,13 @@ def get_valid_args(obj, input_args, free_keys=None):
     expected_args = {}
     for k, v in input_args.items():
         k = k.lower()
+        if k == 't_max':
+            k = 'T_max'
         if k in expected_keys:
+            print(f"Found expected key: {k}")
             expected_args[k] = v
         elif k in free_keys:
+            print(f"Found free key: {k}")
             pass
         else:
             unexpect_keys.append(k)

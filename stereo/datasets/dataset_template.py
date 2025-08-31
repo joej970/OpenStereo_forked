@@ -36,6 +36,44 @@ class DatasetTemplate(torch_data.Dataset):
             else:
                 raise FileNotFoundError(f"Neither file {self.split_file} nor {split_file_expanded} exist.")
 
+        # Apply mode-specific SUBSET_SIZE if specified
+        subset_size = None
+        if self.mode.lower() == 'training':
+            subset_size = getattr(self.data_cfg, 'SUBSET_SIZE_TRAINING', None)
+        elif self.mode.lower() == 'evaluating':
+            subset_size = getattr(self.data_cfg, 'SUBSET_SIZE_VALID', None)
+        elif self.mode.lower() == 'testing':
+            subset_size = getattr(self.data_cfg, 'SUBSET_SIZE_TEST', None)
+        
+        # Take a random subset of the data if specified
+        if subset_size is not None:
+            original_size = len(self.data_list)
+            subset_length = int(original_size * subset_size)
+            
+            # Save current random state
+            current_random_state = random.getstate()
+            
+            try:
+                # Set seed for reproducible subset selection
+                subset_seed = getattr(self.data_cfg, 'SUBSET_SELECTION_SEED', 42)
+                random.seed(subset_seed)
+                
+                # Create random indices and select subset
+                indices = list(range(original_size))
+                selected_indices = random.sample(indices, subset_length)
+                selected_indices.sort()  # Sort to maintain some order for debugging
+                
+                # Select the subset using the random indices
+                self.data_list = [self.data_list[i] for i in selected_indices]
+                
+                print(f"Using {self.mode} random subset: {subset_length}/{original_size} samples ({subset_size*100:.1f}%) with seed {subset_seed}")
+                
+            finally:
+                # Restore original random state
+                random.setstate(current_random_state)
+
+
+
         transform_config = self.data_cfg.DATA_TRANSFORM[self.mode.upper()]
         self.transform = build_transform_by_cfg(transform_config)
 
