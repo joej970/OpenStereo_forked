@@ -51,6 +51,9 @@ class TRTBenchmark:
         self.data_loader = data_loader  # Optional, for inference data preparation
         self.cfgs = cfgs  # Optional, for testing configurations
         self.output_binding_index = None
+        self.memory_snapshots = []
+        # Capture baseline memory before any TensorRT operations
+        self.memory_snapshots.append(('before_engine_creation', self.get_gpu_memory_info()))
 
     def build_engine(self):
         builder = trt.Builder(self.logger)
@@ -86,6 +89,50 @@ class TRTBenchmark:
 
         self._allocate_buffers()
 
+        # Capture memory after engine creation
+        self.memory_snapshots.append(('after_engine_creation', self.get_gpu_memory_info()))
+
+    def get_gpu_memory_info(self):
+        """Get current GPU memory usage."""
+        import pycuda.driver as cuda
+        
+        free_mem, total_mem = cuda.mem_get_info()
+        used_mem = total_mem - free_mem
+        
+        return {
+            'total_mb': total_mem / (1024**2),
+            'used_mb': used_mem / (1024**2),
+            'free_mb': free_mem / (1024**2),
+            'used_percent': (used_mem / total_mem) * 100
+        }
+
+    def get_engine_memory_footprint(self):
+        """Get TensorRT engine memory requirements."""
+        if self.engine is None:
+            return None
+        
+        # Calculate memory for weights and activations
+        engine_size = 0
+        activation_memory = 0
+        
+        # Engine serialization size (weights)
+        serialized_engine = self.engine.serialize()
+        engine_size = len(bytes(serialized_engine)) / (1024**2)  # MB
+        # engine_size = serialized_engine.size / (1024**2)  # MB
+        
+        # Calculate activation memory from bindings
+        for i in range(self.engine.num_bindings):
+            shape = self.context.get_binding_shape(i)
+            dtype = self.engine.get_binding_dtype(i)
+            size_bytes = abs(int(np.prod(shape))) * np.dtype(trt.nptype(dtype)).itemsize
+            activation_memory += size_bytes
+        
+        return {
+            'engine_weights_mb': engine_size,
+            'activation_memory_mb': activation_memory / (1024**2),
+            'total_model_memory_mb': engine_size + (activation_memory / (1024**2))
+        }
+
     def _allocate_buffers(self):
         self.bindings.clear()
         self.inputs.clear()
@@ -113,16 +160,34 @@ class TRTBenchmark:
             self.stream.synchronize()
 
     def benchmark(self, runs=100):
+        inference_memories = []
         self._prepare_dummy_inputs()
         times = []
-        for _ in range(runs):
+        for i in range(runs):
+            before_inference = self.get_gpu_memory_info()
+        
             start = time.perf_counter()
             self.context.execute_async_v2(bindings=self.bindings, stream_handle=self.stream.handle)
             self.stream.synchronize()
             times.append((time.perf_counter() - start) * 1000)
+
+            after_inference = self.get_gpu_memory_info()
+            inference_memories.append(after_inference['used_mb'])
+
+            if i == 0:  # Record first run details
+                self.memory_snapshots.append(('before_first_inference', before_inference))
+                self.memory_snapshots.append(('after_first_inference', after_inference))
+
+        memory_stats = {
+            'mem_mb_mean': np.mean(inference_memories),
+            'mem_mb_std': np.std(inference_memories),
+            'mem_mb_min': np.min(inference_memories),
+            'mem_mb_max': np.max(inference_memories)
+        }
+
         avg = np.mean(times)
         p95 = np.percentile(times, 95)
-        return avg, p95
+        return avg, p95, memory_stats
 
     def profile_layers(self, top_n=100, profile_file="trt_layer_profile.csv"):
         profiler = CustomProfiler(save_path=profile_file)
@@ -167,71 +232,160 @@ class TRTBenchmark:
         # Initialize metric storage
         epoch_metrics = {k: {'indexes': [], 'values': []} for k in testing_cfgs.METRIC}
 
-        # Iterate over the PyTorch DataLoader
-        for i, data in enumerate(self.data_loader):
-            # Move tensors to CPU and convert to numpy for TensorRT
-            left = data['left'].cpu().numpy().astype(np.float32)  # shape [N, C, H, W]
-            right = data['right'].cpu().numpy().astype(np.float32)
+        # Check if model expects depth input by examining bindings or config
+        num_inputs = sum(1 for i in range(self.engine.num_bindings) if self.engine.binding_is_input(i))
+        expects_depth_from_bindings = num_inputs == 3  # left, right, depth_src_0
+        
+        # Also check from model config if available
+        # expects_depth_from_config = False
+        # if hasattr(self.cfgs, 'MODEL') and hasattr(self.cfgs.MODEL, 'ADDITIONAL_DEPTH_SRC'):
+        #     expects_depth_from_config = self.cfgs.MODEL.ADDITIONAL_DEPTH_SRC
+        
+        # expects_depth = expects_depth_from_bindings or expects_depth_from_config
+        expects_depth = expects_depth_from_bindings
+        
+        print(f"Model expects {num_inputs} inputs. Depth input required: {expects_depth}")
+        print(f"  - From bindings: {expects_depth_from_bindings}")
+        # print(f"  - From config: {expects_depth_from_config}")
 
-            # Assuming batch size = 1, squeeze batch dim for simplicity
-            left_input = left[0]
-            right_input = right[0]
+        d_left = None
+        d_right = None
+        d_depth = None  # Add depth buffer
+        d_output = None
+        current_left_size = 0
+        current_right_size = 0
+        current_depth_size = 0  # Add depth size tracking
+        current_output_size = 0
 
-            # Allocate GPU buffers (only once per epoch for speed; shown inline for clarity)
-            d_left = cuda.mem_alloc(left_input.nbytes)
-            d_right = cuda.mem_alloc(right_input.nbytes)
+        try:
+            # Iterate over the PyTorch DataLoader
+            for i, data in enumerate(self.data_loader):
+                left_input = data['left'].cpu().numpy().astype(np.float32)[0]
+                right_input = data['right'].cpu().numpy().astype(np.float32)[0]
+                
+                # Handle depth input if required
+                depth_input = None
+                if expects_depth:
+                    if 'depth_src_0' in data:
+                        depth_input = data['depth_src_0'].cpu().numpy().astype(np.float32)[0]
+                    else:
+                        print(f"Warning: Model expects depth_src_0 but not found in data. Skipping sample {i}")
+                        continue
+                
+                # Check if we need to allocate or resize buffers
+                left_nbytes = left_input.nbytes
+                right_nbytes = right_input.nbytes
+                depth_nbytes = depth_input.nbytes if depth_input is not None else 0
+                
+                # Set shape for current input
+                # this is useful only if training samples change size but in our case they dont
+                # self.context.set_binding_shape(0, (1,) + left_input.shape)  # left input # add batch dimension
+                # self.context.set_binding_shape(1, (1,) + right_input.shape)  # right input
+                
+                output_shape = self.context.get_binding_shape(self.output_binding_index)
+                output = np.empty(output_shape, dtype=np.float32)
+                output_nbytes = output.nbytes
+                
+                # CHECK AND RESIZE BUFFERS IF NEEDED
+                need_realloc = (
+                    d_left is None or left_nbytes > current_left_size or 
+                    d_right is None or right_nbytes > current_right_size or
+                    d_output is None or output_nbytes > current_output_size or
+                    (expects_depth and (d_depth is None or depth_nbytes > current_depth_size))
+                )
+                
+                if need_realloc:
+                    # Free existing buffers if they exist
+                    if d_left is not None:
+                        d_left.free()
+                    if d_right is not None:
+                        d_right.free()
+                    if d_depth is not None:
+                        d_depth.free()
+                    if d_output is not None:
+                        d_output.free()
+                    
+                    # Allocate new buffers with current sizes
+                    print(f"Allocating GPU buffers: left={left_nbytes//1024//1024}MB, "
+                        f"right={right_nbytes//1024//1024}MB, "
+                        f"depth={depth_nbytes//1024//1024}MB, "
+                        f"output={output_nbytes//1024//1024}MB")
+                    
+                    d_left = cuda.mem_alloc(left_nbytes)
+                    d_right = cuda.mem_alloc(right_nbytes)
+                    if expects_depth:
+                        d_depth = cuda.mem_alloc(depth_nbytes)
+                    d_output = cuda.mem_alloc(output_nbytes)
+                    
+                    # Update current sizes
+                    current_left_size = left_nbytes
+                    current_right_size = right_nbytes
+                    if expects_depth:
+                        current_depth_size = depth_nbytes
+                    current_output_size = output_nbytes
+                
+                # Transfer inputs to GPU (reuse existing buffers)
+                cuda.memcpy_htod(d_left, left_input)
+                cuda.memcpy_htod(d_right, right_input)
+                if expects_depth:
+                    cuda.memcpy_htod(d_depth, depth_input)
 
-            # Get output shape from the engine binding
-            output_binding_idx = self.output_binding_index  # precomputed index for "disp_pred"
-            output_shape = self.context.get_binding_shape(output_binding_idx)
-            output = np.empty(output_shape, dtype=np.float32)
-            d_output = cuda.mem_alloc(output.nbytes)
+                # Run inference with appropriate bindings
+                if expects_depth:
+                    bindings = [int(d_left), int(d_right), int(d_depth), int(d_output)]
+                else:
+                    bindings = [int(d_left), int(d_right), int(d_output)]
+                    
+                infer_start = time.time()
+                self.context.execute_v2(bindings)
+                infer_time = time.time() - infer_start
 
-            # Transfer inputs to GPU
-            cuda.memcpy_htod(d_left, left_input)
-            cuda.memcpy_htod(d_right, right_input)
+                # Copy result back to CPU
+                cuda.memcpy_dtoh(output, d_output)
 
-            # Prepare bindings in correct order: [left, right, output]
-            bindings = [int(d_left), int(d_right), int(d_output)]
+                # TensorRT output is numpy, convert to torch tensor for metric computation
+                disp_pred = torch.from_numpy(output).to(local_rank)
 
-            # Run inference with TensorRT
-            infer_start = time.time()
-            self.context.execute_v2(bindings)
-            infer_time = time.time() - infer_start
+                # Access ground truth and mask
+                disp_gt = data["disp"].to(local_rank)
+                mask = (disp_gt < testing_cfgs.MAX_DISP) & (disp_gt > 0)
+                if 'occ_mask' in data and testing_cfgs.get('APPLY_OCC_MASK', False):
+                    mask = mask & ~data['occ_mask'].to(torch.bool)
 
-            # Copy result back to CPU
-            cuda.memcpy_dtoh(output, d_output)
+                # Compute metrics
+                for m in testing_cfgs.METRIC:
+                    metric_func = metric_func_dict[m]
+                    res = metric_func(disp_pred.squeeze(1), disp_gt, mask)
+                    epoch_metrics[m]['indexes'].extend(data['index'].tolist())
+                    epoch_metrics[m]['values'].extend(res.tolist())
 
-            # TensorRT output is numpy, convert to torch tensor for metric computation
-            disp_pred = torch.from_numpy(output).to(local_rank)
-
-            # Access ground truth and mask
-            disp_gt = data["disp"].to(local_rank)
-            mask = (disp_gt < testing_cfgs.MAX_DISP) & (disp_gt > 0)
-            if 'occ_mask' in data and testing_cfgs.get('APPLY_OCC_MASK', False):
-                mask = mask & ~data['occ_mask'].to(torch.bool)
-
-            # Compute metrics
-            for m in testing_cfgs.METRIC:
-                metric_func = metric_func_dict[m]
-                res = metric_func(disp_pred.squeeze(1), disp_gt, mask)
-                epoch_metrics[m]['indexes'].extend(data['index'].tolist())
-                epoch_metrics[m]['values'].extend(res.tolist())
-
-            # Logging inference time
-            message = f'Testing TensorRT: Iter:{i:>4d}/{len(self.data_loader)} InferTime: {infer_time*1000:.2f}ms'
-            # self.logger.info(message)
-            print(message)
+                # Logging inference time
+                message = f'Testing TensorRT: Iter:{i:>4d}/{len(self.data_loader)} InferTime: {infer_time*1000:.2f}ms'
+                # self.logger.info(message)
+                print(message)
+            
+        except Exception as e:
+            print(f"Error during inference {i}: {e}.")
+            print(f"Returning prematurely with metrics collected so far.")
+            
+        finally:
+            # Free GPU memory
+            if d_left is not None:
+                d_left.free()
+            if d_right is not None:
+                d_right.free()
+            if d_depth is not None:
+                d_depth.free()
+            if d_output is not None:
+                d_output.free()
 
         # Compute final averages
-        results = {k: torch.tensor(epoch_metrics[k]["values"]).mean() for k in epoch_metrics.keys()}
+        results = {k: float(torch.tensor(epoch_metrics[k]["values"]).mean()) for k in epoch_metrics.keys()}
 
         # self.logger.info(f"Testing TensorRT: Metrics: {results}")
         print(f"Testing TensorRT: Metrics: {results}")
 
         return results
-
-
 
 def trt_benchmark(onnx_filename, csv_filename = f"trt_benchmark.csv", fp16=True, data_loader=None, cfgs=None):
     """
@@ -240,12 +394,13 @@ def trt_benchmark(onnx_filename, csv_filename = f"trt_benchmark.csv", fp16=True,
     """
     bench = TRTBenchmark(onnx_filename, fp16=fp16, data_loader=data_loader, cfgs=cfgs)
     bench.build_engine()
+    engine_footprint = bench.get_engine_memory_footprint()
     bench.warmup(iterations=10)
-    avg, p95 = bench.benchmark(runs=100)
+    avg, p95, memory_inference_stats = bench.benchmark(runs=100)
     ips = 1000 / avg
     bench.profile_layers(top_n=100, profile_file=csv_filename)
     print(f"Average latency: {avg:.3f} ms")
     print(f"p95 latency: {p95:.3f} ms")
     print(f"Iterations per second: {ips:.2f} inferences/sec.")
-    results = bench.test_on_real_data_trt()
-    return avg, p95, ips, results
+    acc_results = bench.test_on_real_data_trt()
+    return avg, p95, ips, acc_results, engine_footprint, memory_inference_stats

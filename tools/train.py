@@ -52,17 +52,22 @@ def parse_config():
     parser.add_argument('--pin_memory', action='store_true', default=False, help='data loader pin memory')
     parser.add_argument('--force_override', action='store_true', default=False, help='Force overwrite the existing experiment')
     parser.add_argument('--backend', type=str, default='nccl', help='gpu intercommunication backend, default is nccl, options: gloo, nccl')
-    parser.add_argument('--enable_profiler', action='store_true', help='Enable torch.profiler for debugging')
+    # parser.add_argument('--enable_profiler', action='store_true', help='Enable torch.profiler for debugging')
     # batch_size argument
     parser.add_argument('--batch_size', type=int, default=None, help='Override BATCH_SIZE_PER_GPU in config')
     parser.add_argument('--overide_epoch', type=int, default=None, help='Override EPOCH in config.')
+    parser.add_argument('--override_epoch', type=int, default=None, help='Override EPOCH in config.')
     parser.add_argument('--slurm_job_id', type=str, default=None, help='Optional: SLURM job ID for logging')
     parser.add_argument('--experiment_id', type=str, default=None, help='Optional: Experiment ID for logging')
-
+    parser.add_argument('--onnx_file', type=str, default=None, help='Optional: ONNX file name for evaluation')
+    # parser.add_argument('--')
 
     args = parser.parse_args()
     yaml_config = common_utils.config_loader(args.cfg_file)
     cfgs = EasyDict(yaml_config)
+
+    if args.overide_epoch is not None: # back compatibility for typo
+        args.override_epoch = args.overide_epoch
 
      # Load the data config file
     if args.data_cfg_file:
@@ -87,13 +92,13 @@ def parse_config():
         else:
             cfgs.OPTIMIZATION = EasyDict({'BATCH_SIZE_PER_GPU': args.batch_size})
 
-    if args.overide_epoch is not None:
+    if args.override_epoch is not None:
         if 'OPTIMIZATION' in cfgs and hasattr(cfgs.OPTIMIZATION, 'NUM_EPOCHS'):
-            cfgs.OPTIMIZATION.NUM_EPOCHS = args.overide_epoch
+            cfgs.OPTIMIZATION.NUM_EPOCHS = args.override_epoch
         elif 'OPTIMIZATION' in cfgs:
-            cfgs.OPTIMIZATION.NUM_EPOCHS = args.overide_epoch
+            cfgs.OPTIMIZATION.NUM_EPOCHS = args.override_epoch
         else:
-            cfgs.OPTIMIZATION = EasyDict({'NUM_EPOCHS': args.overide_epoch})
+            cfgs.OPTIMIZATION = EasyDict({'NUM_EPOCHS': args.override_epoch})
 
 
     dataset_names = [x.DATASET for x in cfgs.DATA_CONFIG.DATA_INFOS]
@@ -115,7 +120,8 @@ def parse_config():
 
     args.run_mode = 'train'
     # print(f"data_path: {cfgs.DATA_CONFIG.DATA_INFOS[0].DATA_PATH}")
-   
+    
+    args.output_dir = str(os.path.join(args.save_root_dir, args.exp_group_path, args.tag, args.extra_tag))
 
     return args, cfgs
 
@@ -195,7 +201,7 @@ def main():
         common_utils.set_random_seed(seed=seed)
 
     # savedir
-    args.output_dir = str(os.path.join(args.save_root_dir, args.exp_group_path, args.tag, args.extra_tag))
+    # args.output_dir = str(os.path.join(args.save_root_dir, args.exp_group_path, args.tag, args.extra_tag))
     if global_rank == 0:
         if os.path.exists(args.output_dir) and args.extra_tag != 'debug' and cfgs.MODEL.CKPT == -1:
             if args.force_override:
@@ -239,7 +245,9 @@ def main():
         # Log all cfgs parameters recursively to tensorboard
         log_configs_to_tensorboard(cfgs, tb_writer, pre='cfgs', step=0)
     # logger
-    log_file = os.path.join(args.output_dir, 'train_{}_{}.log'.format(datetime.datetime.now().strftime('%Y%m%d-%H%M%S'), group_rank))
+    log_file = os.path.join(args.output_dir, f"{args.slurm_job_id}_{args.experiment_id}.log")
+    # log_file = os.path.join(args.output_dir, 'train_{}.log'.format( group_rank))
+    # log_file = os.path.join(args.output_dir, 'train_{}_{}.log'.format(datetime.datetime.now().strftime('%Y%m%d-%H%M%S'), group_rank))
     logger = common_utils.create_logger(log_file, rank=local_rank)
     for key, val in vars(args).items():
         logger.info('{:16} {}'.format(key, val))
@@ -270,7 +278,8 @@ def main():
 
     print(f"Process {os.getpid()}: [Rank {global_rank}/{WORLD_SIZE}]: Building trainer.")
     # trainer
-    model_trainer = build_trainer(args, cfgs, local_rank, global_rank, logger, tb_writer, enable_profiler=args.enable_profiler) 
+    model_trainer = build_trainer(args, cfgs, local_rank, global_rank, logger, tb_writer) 
+    # model_trainer = build_trainer(args, cfgs, local_rank, global_rank, logger, tb_writer, enable_profiler=args.enable_profiler) ,
 
     print(f"Process {os.getpid()}: [Rank {global_rank}/{WORLD_SIZE}]: Trainer built successfully.")
 
@@ -278,14 +287,35 @@ def main():
                        desc='epochs', dynamic_ncols=True, disable=(local_rank != 0),
                        bar_format='{l_bar}{bar}{r_bar}\n')
     # train loop
+    best_epoch = {'idx': 0, 'epe': 1e6}
     print(f"Process {os.getpid()}: [Rank {global_rank}/{WORLD_SIZE}]: Starting training loop.")
     for current_epoch in tbar:
         model_trainer.train(current_epoch, tbar)
         model_trainer.save_ckpt(current_epoch)
         if current_epoch % cfgs.TRAINER.EVAL_INTERVAL == 0 or current_epoch == model_trainer.total_epochs - 1:
             model_trainer.evaluate(current_epoch)
+            current_epe = model_trainer.eval_epes.get(current_epoch, None)
+            if current_epe is None:
+                print(f"Warning: EPE for epoch {current_epoch} not found")
+                print(f"Found only: {model_trainer.eval_epes}")
+            else:
+                if current_epe < best_epoch['epe']:
+                    best_epoch = {'idx': current_epoch, 'epe': current_epe}
+                    model_trainer.save_best_pth(current_epoch)
+                    print(f"Saving best model for epoch {best_epoch} with EPE {current_epe}")
 
-    print(f"Process {os.getpid()}: [Rank {global_rank}/{WORLD_SIZE}]: Training loop completed.")
+    print(f"Process {os.getpid()}: [Rank {global_rank}/{WORLD_SIZE}]: Training loop completed. Best epoch {best_epoch} with epe {best_epoch['epe']:.4f}")
+
+    evaluation_message = f"Model evaluation results: {model_trainer.eval_epes}"
+    print(f"Process {os.getpid()}: [Rank {global_rank}/{WORLD_SIZE}]: {evaluation_message}")
+    logger.info(evaluation_message)
+
+    message_idx = f"Final best epoch idx: {best_epoch['idx']}"
+    message_epe = f"Final best epoch epe: {best_epoch['epe']:.4f}"
+    #2025-08-28 10:46:01,444   INFO  Final best epoch idx: 45
+    #2025-08-28 10:46:01,444   INFO  Final best epoch epe: 4.356
+    logger.info(message_idx)
+    logger.info(message_epe)
 
     experiment_summary = {
         "experiment_ID": args.experiment_id,
@@ -307,22 +337,52 @@ def main():
 
     experiment_summary["test_accuracy_metrics"] = test_results
     
+
+    # inference time benchmark
+
+    model = model_trainer.model
+
+    best_pth_name = os.path.join(args.ckpt_dir, 'best_model.pth')
+    try:
+        # best_model_filename = 'best_model.pth'
+        logger.info('Loading best model from checkpoint %s' % best_pth_name)
+        if not os.path.isfile(best_pth_name):
+            raise FileNotFoundError
+        common_utils.load_params_from_file(
+            model, best_pth_name, device='cuda:%d' % local_rank,
+            dist_mode=args.dist_mode, logger=logger, strict=False)
+        print(f"Process {os.getpid()}: [Rank {global_rank}/{WORLD_SIZE}]: Successfully loaded best model from checkpoint {best_pth_name}.")
+    except Exception as e:
+        print(f"Process {os.getpid()}: [Rank {global_rank}/{WORLD_SIZE}]: Failed to load best model from checkpoint {best_pth_name}. Continuing with the last epoch model.")
+        logger.info(e)
+        logger.info(f"Failed to load best model from checkpoint {best_pth_name}. Continuing with the last epoch model.")
+
+
+    # here you should read vest model from ptx
+
+
+
+    
+    if args.dist_mode:
+        model = model.module  # Get the underlying model if using DDP
+
     # Convert model output to just the tensor (avoid dict)
     class WrappedModel(torch.nn.Module):
         def __init__(self, base_model):
             super().__init__()
             self.base_model = base_model
+            self.additional_depth_src = getattr(base_model, 'additional_depth_src', False)
+            print(f"the base model has source: {self.additional_depth_src}")
 
-        def forward(self, left, right):
-            data = {"left": left, "right": right}
+        def forward(self, left, right, depth_source = None):
+            if self.additional_depth_src:
+                if(depth_source is None):
+                    raise ValueError("depth_source must be provided when additional_depth_src is enabled")
+                data = {"left": left, "right": right, "depth_src_0": depth_source}
+            else:
+                data = {"left": left, "right": right}
             return self.base_model(data)["disp_pred"]  # single output
     
-    # inference time benchmark
-    model = model_trainer.model
-
-    if args.dist_mode:
-        model = model.module  # Get the underlying model if using DDP
-
     model = WrappedModel(model).cuda().eval()
 
     def set_eval_recursive(model):
@@ -330,6 +390,23 @@ def main():
             module.eval()
 
     set_eval_recursive(model)
+
+    # model.additional_depth_src = additional_depth_src
+
+    # additional_depth_src = False
+    print("")
+    print("1:")
+    if hasattr(model, 'additional_depth_src'):
+        print("Model has additional depth source")
+        if model.additional_depth_src:
+            # additional_depth_src = True
+            print("Additional depth source is enabled")
+        else:
+            # additional_depth_src = False
+            print("Additional depth source is disabled")
+    else:
+        print("Model does not have additional depth source")
+    print("")
 
 
     shape = [1, 3, 544, 960]  # keep batchsize 1
@@ -368,59 +445,17 @@ def main():
         "throughput": throughput
     }
 
-    onnx_file = os.path.join(args.output_dir, f"{args.extra_tag}.onnx")
-    measure.export_to_onnx(model = model, input_shape = shape, onnx_path = onnx_file, use_fp16=False, dynamic_batch = False, opset_version=11)
+    if args.onnx_file is not None:
+        onnx_file = args.onnx_file
+    else:
+        onnx_file = os.path.join(args.output_dir, f"{args.extra_tag}.onnx")
 
-    from inference_benchmarking import trt_benchmark
-    
-    print(f"Running TensorRT benchmark on ONNX file: {onnx_file}")
-    logger.info(f"Running TensorRT benchmark on ONNX file: {onnx_file}")
-    # csv_filename = f"trt_benchmark_{args.slurm_job_id}.csv"
-    csv_filename = os.path.join(args.output_dir, f"trt_benchmark.csv")
-    avg, p95, ips, metrics = trt_benchmark(onnx_file, csv_filename=csv_filename, fp16=True, data_loader=model_trainer.test_loader, cfgs=cfgs)
+    with torch.no_grad():
+        measure.export_to_onnx(model = model, input_shape = shape, onnx_path = onnx_file, use_fp16=False, dynamic_batch = False, opset_version=17)
 
-
-    experiment_summary["inference_benchmark"]["Onnx_trt_inference"] = {
-        "avg_latency": avg,
-        "p95_latency": p95,
-        "inference": ips
-    }
-    experiment_summary["test_accuracy_metrics_trt"] = metrics
-
-
-    import analyze_trt_csv_profile as analyze_trt_csv_profile
-    
-    print(f"Analyzing TensorRT CSV profile: {csv_filename}")
-    logger.info(f"Analyzing TensorRT CSV profile: {csv_filename}")
-    
-    # Convert to nested format
-    result = analyze_trt_csv_profile.convert_trt_csv_to_perfetto_json(csv_filename, f"{csv_filename[:-4]}_perfetto.json")
-    analyze_trt_csv_profile.save_nested_profile(result["nested_profile"], f"{csv_filename[:-4]}_nested.json")
-    
-    top_layers, stage_times = analyze_trt_csv_profile.analyze_trt_csv_profile(csv_filename)
-    if tb_writer is not None:
-        tb_writer.add_scalar("TensorRT Benchmark/Inference_Time", t_per_inference, global_step=0)
-        tb_writer.add_scalar("TensorRT Benchmark/Throughput", throughput, global_step=0)
-        tb_writer.add_scalar("TensorRT Benchmark/Avg_Latency", avg, global_step=0)
-        tb_writer.add_scalar("TensorRT Benchmark/p95_Latency", p95, global_step=0)
-        tb_writer.add_scalar("TensorRT Benchmark/IPS", ips, global_step=0)
-        tb_writer.add_text("TensorRT benchmark/Top_Layers:", top_layers.to_string(), global_step=0)
-        tb_writer.add_text("TensorRT benchmark/Stage_Times:", stage_times.to_string(), global_step=0)
-
-
-    
-    formatted_string = measure.format_dict_multiline(experiment_summary)
-    print(formatted_string)
-
-    print(f"Experiment summary: {formatted_string}")
-    logger.info(f"Experiment summary: {formatted_string}")
-
-
-    print(f"Process {os.getpid()}: [Rank {global_rank}/{WORLD_SIZE}]: Training completed. Exiting.")
 
     if tb_writer is not None:
         tb_writer.close()
-
 
 
 

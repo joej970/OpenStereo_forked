@@ -1,6 +1,7 @@
 # @Time    : 2024/3/1 11:17
 # @Author  : zhangchenming
 import time
+from sympy import shape
 import torch
 import argparse
 import sys
@@ -39,15 +40,39 @@ def main():
 @torch.no_grad()
 def measure(model, shape):
     model.eval()
+    import copy
+    # Create a copy of the model for FLOP calculation to avoid hook conflicts
+    model_copy = copy.deepcopy(model)
 
-    inputs = {'left': torch.randn(shape).cuda(),
-              'right': torch.randn(shape).cuda()}
-    
-    left_input = inputs['left']
-    right_input = inputs['right']
+    left_input = torch.randn(shape).cuda()
+    right_input = torch.randn(shape).cuda()
+    inputs_arr = [left_input, right_input]
+    # check if the model has attribute 'additional_depth_src' and if it is true:
+    if hasattr(model, 'additional_depth_src') and model.additional_depth_src:
+        print("Generationg additional depth source")
+        #depth spatial dims are half of original
+        depth_shape = [shape[0], shape[2] // 2, shape[3] // 2]
+        depth_src_0_input = torch.randn(depth_shape).cuda()
+        print(f"Depth source shape: {depth_src_0_input.shape}")
+        inputs_arr.append(depth_src_0_input)
+        # flops, params = thop.profile(model_copy, inputs=(left_input, right_input, depth_src_0_input))
+    else:
+        print("No additional depth source")
+        # flops, params = thop.profile(model_copy, inputs=(left_input, right_input))
 
-    # flops, params = thop.profile(model, inputs=(inputs,))
-    flops, params = thop.profile(model, inputs=(left_input,right_input))
+    # print(f"Members of inputs_arr: {len(inputs_arr)}")
+    # for i, input_tensor in enumerate(inputs_arr):
+    #     print(f"Shape of input tensor {i}: {input_tensor.shape}")
+
+    # print(f"tuple of inputs_arr: {len(tuple(inputs_arr))}")
+    # for i, input_tensor in enumerate(tuple(inputs_arr)):
+    #     print(f"Shape of input tensor {i} (as tuple): {input_tensor.shape}")
+
+    flops, params = thop.profile(model_copy, inputs=tuple(inputs_arr))
+
+    # Clear the copy to free memory
+    del model_copy
+    # flops, params = thop.profile(model, inputs=(left_input,right_input))
     message_1 = f"Number of calculates: {flops / 1e9:.2f} GFlops"
     message_2 = f"Number of parameters: {params / 1e6:.2f} M"
     print(message_1)
@@ -67,16 +92,24 @@ def infer_time_torch_script(model, shape):
     # model.eval().to(device)
 
     # Step 2: Create dummy input
-    inputs = {'left': torch.randn(shape).cuda(),
-            'right': torch.randn(shape).cuda()}
-    
-        
-    left_input = inputs['left']
-    right_input = inputs['right']
-    # dummy_input = torch.randn(*shape).to(device)
+    left_input = torch.randn(shape).cuda()
+    right_input = torch.randn(shape).cuda()
+    inputs_arr = [left_input, right_input]
 
-    # Step 3: Trace the model with TorchScript
-    scripted_model = torch.jit.trace(model, (left_input, right_input), strict=False) 
+    if hasattr(model, 'additional_depth_src') and model.additional_depth_src:
+        #depth spatial dims are half of original
+        depth_shape = [shape[0], shape[2] // 2, shape[3] // 2]
+        depth_src_0_input = torch.randn(depth_shape).cuda()
+
+        inputs_arr.append(depth_src_0_input)
+        # Step 3: Trace the model with TorchScript
+        # scripted_model = torch.jit.trace(model, (left_input, right_input, depth_src_0_input), strict=False) 
+    # else:
+        # scripted_model = torch.jit.trace(model, (left_input, right_input), strict=False) 
+
+    scripted_model = torch.jit.trace(model, tuple(inputs_arr), strict=False) 
+        # Step 3: Trace the model with TorchScript
+    
     # scripted_model = torch.jit.script(model)  # Use script instead of trace
     # Note: If your model has dynamic behavior (like conditionals based on inputs), use script instead of trace.
     # the model returns a dict which is not supported by torch.jit.trace so we need to pass strict=False
@@ -85,14 +118,14 @@ def infer_time_torch_script(model, shape):
     # Step 4: Warm-up (important)
     for _ in range(warmup_iters):
         with torch.no_grad():
-            _ = scripted_model(left_input, right_input)
+            _ = scripted_model(*inputs_arr)
     torch.cuda.synchronize()
 
     # Step 5: Measure inference time
     start = time.time()
     for _ in range(num_iters):
         with torch.no_grad():
-            _ = scripted_model(left_input, right_input)
+            _ = scripted_model(*inputs_arr)
     torch.cuda.synchronize()
     end = time.time()
 
@@ -110,18 +143,20 @@ def infer_time(model, shape):
     model.eval()
     repetitions = 100
 
-    inputs = {'left': torch.randn(shape).cuda(),
-              'right': torch.randn(shape).cuda()}
-    
-    left_input = inputs['left']
-    right_input = inputs['right']
+    left_input = torch.randn(shape).cuda()
+    right_input = torch.randn(shape).cuda()
+    inputs_arr = [left_input, right_input]
+
+    if hasattr(model, 'additional_depth_src') and model.additional_depth_src:
+        depth_shape = [shape[0], shape[2] // 2, shape[3] // 2]
+        depth_src_0 = torch.randn(depth_shape).cuda()
+        inputs_arr.append(depth_src_0)
 
     # 预热, GPU 平时可能为了节能而处于休眠状态, 因此需要预热
     print('warm up ...\n')
     with torch.no_grad():
         for _ in range(10):
-            # _ = model(inputs)
-            _ = model(left_input, right_input)
+            _ = model(*inputs_arr)
 
     # synchronize 等待所有 GPU 任务处理完才返回 CPU 主线程
     # torch.cuda.synchronize()
@@ -138,8 +173,7 @@ def infer_time(model, shape):
             # starter.record()
             infer_start = time.perf_counter()
             # infer_start = time.time()
-            # result = model(inputs)
-            result = model(left_input, right_input)
+            result = model(*inputs_arr)
             # print(result.keys())
             # ender.record()
             all_time += time.perf_counter() - infer_start
@@ -159,7 +193,7 @@ def infer_time(model, shape):
     start = time.time()
     for _ in range(num_iters):
         with torch.no_grad():
-            _ = model(left_input, right_input)
+            _ = model(*inputs_arr)
     torch.cuda.synchronize()
     end = time.time()
 
@@ -177,7 +211,7 @@ def export_to_onnx(model, input_shape, onnx_path,
                    
                    use_fp16=False,
                    dynamic_batch=False,
-                   opset_version=11):
+                   opset_version=17):
     """
     Export a PyTorch model to ONNX.
 
@@ -200,31 +234,36 @@ def export_to_onnx(model, input_shape, onnx_path,
     dtype = torch.float16 if use_fp16 else torch.float32
     dummy_left = torch.randn(*input_shape, dtype=dtype).cuda()
     dummy_right = torch.randn(*input_shape, dtype=dtype).cuda()
-    # dummy_input = {"left": dummy_left, "right": dummy_right}
+    inputs_arr = [dummy_left, dummy_right]
 
     input_names = ["left", "right"]
     output_names = ["disp_pred"]  # adjust this if you return more
 
-    # input_names = ["input"]
-    # output_names = ["output"]
+    if hasattr(model, 'additional_depth_src') and model.additional_depth_src:
+        depth_shape = [input_shape[0], input_shape[2] // 2, input_shape[3] // 2]
+        dummy_depth = torch.randn(*depth_shape, dtype=dtype).cuda()
+        inputs_arr.append(dummy_depth)
+        input_names.append("depth_src_0")
 
     if dynamic_batch:
-        dynamic_axes = {
-            "input": {0: "batch_size"},
-            "output": {0: "batch_size"}
-        }
+        dynamic_axes = {}
+        for i, name in enumerate(input_names):
+            dynamic_axes[name] = {0: "batch_size"}
+        for name in output_names:
+            dynamic_axes[name] = {0: "batch_size"}
     else:
         dynamic_axes = None
 
     torch.onnx.export(
         model,
-        (dummy_left, dummy_right),
+        tuple(inputs_arr),
         onnx_path,
         input_names=input_names,
         output_names=output_names,
         dynamic_axes=dynamic_axes,
         opset_version=opset_version,
-        do_constant_folding=True
+        do_constant_folding=True,
+        training=torch.onnx.TrainingMode.EVAL
     )
 
     if not os.path.exists(onnx_path):
