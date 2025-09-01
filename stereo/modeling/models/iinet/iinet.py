@@ -30,7 +30,7 @@ class IINet(nn.Module):
         # and image prior image feautres
         if self.run_opts.CV_ENCODER_TYPE == "multi_scale_encoder":
 
-            self.cost_volume_net = CVEncoder(
+            self.cost_volume_net = CVEncoder( # uses cost volume (rough per-pixel estimate - inter) and features (context, shape, edges - intra)
                 num_ch_cv=self.run_opts.MAX_DISP // 2 ** (self.run_opts.MATCHING_SCALE + 1),
                 num_ch_encs=self.num_ch_enc,
                 num_ch_outs=[24, 64, 128, 192, 256],
@@ -57,11 +57,11 @@ class IINet(nn.Module):
         else:
             raise ValueError("Unrecognized option for feature volume type {}!".format(self.run_opts.FEATURE_VOLUME_TYPE))
 
-        scale_factor = 2 ** (self.run_opts.MATCHING_SCALE + 1)
+        scale_factor = 2 ** (self.run_opts.MATCHING_SCALE + 1) # 2**(2 + 1) = 8
         self.cost_volume = cost_volume_class(
-            num_depth_bins=self.run_opts.MAX_DISP // scale_factor,
+            num_depth_bins=self.run_opts.MAX_DISP // scale_factor, # 192/8 = 24
             dot_dim=self.run_opts.DOT_DIM,
-            disp_scale=self.run_opts.DISP_SCALE // scale_factor,
+            disp_scale=self.run_opts.DISP_SCALE // scale_factor, # 16 // 8 = 2
             multiscale=self.run_opts.MULTISCALE
         )
 
@@ -96,12 +96,14 @@ class IINet(nn.Module):
         cost_volumes, hypos, priority = self.cost_volume(
                                                 left_feats=matching_left_feats,
                                                right_feats=matching_right_feats,
-                                           )
+                                           ) 
+        # cost volumes are 3D tensors of shape [B, 1, H, W] 
 
-        if not only_uncer:
+        if not only_uncer: # if only_uncer == False, then we run the depth decoder
             filter_volumes = [cost_volume * confidence for cost_volume, confidence in zip(cost_volumes, priority['cconf'])]
             # Encode the cost volume and current image features
-            cost_volume_features = self.cost_volume_net(
+            # uses cost volume (rough per-pixel estimate - inter) and features (context, shape, edges - intra)
+            cost_volume_features = self.cost_volume_net(  
                                     filter_volumes,
                                     left_feats[self.run_opts.MATCHING_SCALE - self.run_opts.MULTISCALE:],
                                 )

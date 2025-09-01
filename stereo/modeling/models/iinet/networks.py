@@ -126,15 +126,15 @@ class DepthDecoderMSR(nn.Module):
         stage = len(priority['cdisp']) - 1
         up_disp = None
         for j in range(1, 2):
-            max_i = 5 - j
+            max_i = 5 - j # 4
             upfeats = []
             for i in range(max_i, 0, -1):
 
                 inputs = [self.convs[f"right_conv_{i}{j - 1}"](prev_outputs[i - 1])]
 
-                if i == max_i:
+                if i == max_i: # 4: up_conv_50
                     inputs += [upsample(self.convs[f"up_conv_{i + 1}{j - 1}"](prev_outputs[i]))]
-                else:
+                else: # 3, 2, 1: up_conv_41, up_conv_31, up_conv_21
                     inputs += [upsample(self.convs[f"up_conv_{i + 1}{j - 1}"](upfeats[-1]))]
 
                 upfeat = self.convs[f"in_conv_{i}{j}"](torch.cat(inputs, dim=1))
@@ -174,38 +174,38 @@ class CVEncoder(nn.Module):
         num_ch_cvs = [4, 6, num_ch_cv]
         num_ch_cvs = num_ch_cvs[start_level:]
 
-        for i in range(self.num_blocks):
+        for i in range(self.num_blocks): # 0, 1, 2, 3, 4
             num_ch_in = num_ch_subouts[i - 1]
             num_ch_out = num_ch_subouts[i]
             if i == 0:
                 num_ch_fuse = num_ch_cvs[i] + num_ch_subencs[i]
-            elif i < multi_scale + 1:
+            elif i < multi_scale + 1: # 1, 2
                 self.convs[f"ds_conv_{i}"] = BasicBlock(num_ch_in, num_ch_out, stride=2)
                 num_ch_fuse = num_ch_cvs[i] + num_ch_out + num_ch_subencs[i]
-            else:
+            else: # 3, 4
                 self.convs[f"ds_conv_{i}"] = BasicBlock(num_ch_in, num_ch_out, stride=2)
                 num_ch_fuse = num_ch_out + num_ch_subencs[i]
-            self.convs[f"conv_{i}"] = nn.Sequential(
+            self.convs[f"conv_{i}"] = nn.Sequential( # 0, 1, 2, 3, 4
                 BasicBlock(num_ch_fuse, num_ch_out, stride=1),
                 BasicBlock(num_ch_out, num_ch_out, stride=1),
             )
             self.num_ch_enc.append(num_ch_out)
 
     def forward(self, cost_list, img_feats):
-        num_stage = len(cost_list)
+        num_stage = len(cost_list) # for MULTISCALE = 2, MATCHING_SCALE = 2 => num_stage = 3
 
         outputs = [None] * self.num_blocks
         cost = cost_list[0]
-        x = torch.cat([cost, img_feats[0]], dim=1)
+        x = torch.cat([cost, img_feats[0]], dim=1) # cost [B, D_bins, H, W], feats [B, C_i, H, W]
         x = self.convs[f"conv_{0}"](x)
         outputs[0] = x
         for i in range(1, self.num_blocks):
             x = self.convs[f"ds_conv_{i}"](x)
-            if i < num_stage:
+            if i < num_stage: # 1, 2
                 cost = cost_list[i]
                 x = torch.cat([cost, x, img_feats[i]], dim=1)
                 x = self.convs[f"conv_{i}"](x)
-            else:
+            else: # 3, 4
                 x = torch.cat([x, img_feats[i]], dim=1)
                 x = self.convs[f"conv_{i}"](x)
             outputs[i] = x
@@ -394,7 +394,7 @@ class UnetMatchingEncoder(nn.Module):
         del model
 
     def forward(self, x):
-        output = [None] * (self.multiscale + 1)
+        output = [None] * (self.multiscale + 1) # [None, None, None]
         enc_output = [None] * 5
         feat_output = [None] * 5
         x = self.stage1(self.stage0(x))
@@ -412,11 +412,12 @@ class UnetMatchingEncoder(nn.Module):
         x = self.stage5(x)
         enc_output[4] = x
         feat_output[4] = x
-        for i in range(4, 0, -1):
+        # decoder part
+        for i in range(4, 0, -1): # i = 4, 3, 2, 1
             x_right = enc_output[i - 1]
             x_diag = self.convs[f'up_conv{i + 1}'](enc_output[i])
             x_up = self.convs[f'in_conv{i}'](torch.cat([x_right, x_diag], dim=1))
             feat_output[i - 1] = x_up
-            if self.lrcvscale - self.multiscale <= i <= self.lrcvscale:
+            if self.lrcvscale - self.multiscale <= i <= self.lrcvscale: # if 1, 2, or 3
                 output[i - self.lrcvscale + self.multiscale] = self.convs[f'out_conv{i}'](x_up)
         return output, feat_output

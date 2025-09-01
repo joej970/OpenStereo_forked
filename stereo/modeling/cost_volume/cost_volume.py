@@ -1,9 +1,226 @@
 # @Time    : 2023/10/8 05:02
 # @Author  : zhangchenming
+import numpy as np
 import torch
 import torch.nn as nn
 from stereo.modeling.common.basic_block_3d import BasicConv3d
 from stereo.modeling.common.basic_block_2d import BasicConv2d
+
+# class Simple4DVolume(nn.Module):
+# function of this class returns calculated cost volume
+# which means it should be called from a forward() function
+# of a model 
+# 4D = [batch, features, dispariry, width, height]
+class SimpleCorrelationVolumes:
+    def __init__(self, type, group=1):
+        self.group = group
+        if type == 'SIMPLE_3D':
+            self.volume = SimpleCorrelationVolume_3D(group)
+            # self.volume = SimpleCorrelationVolume_3D()
+        elif type == 'SIMPLE_4D':
+            self.volume = SimpleCorrelationVolume_4D(group)
+        elif type == 'ALL_PAIRS_4D':
+            self.volume = Simple_AllPairsVolume_4D(group)
+        elif type == 'ALL_PAIRS_3D':
+            self.volume = Simple_AllPairsVolume_3D(group)
+        else:
+            raise ValueError(f"Unknown type: {type}. Supported types are 'SIMPLE_3D', 'SIMPLE_4D', 'ALL_PAIRS_4D', 'ALL_PAIRS_3D'.")
+        
+    def calculate(self, left_feat, right_feat, max_disp = None):
+        return self.volume.calculate(left_feat, right_feat, max_disp)
+    
+
+    
+
+class Simple_AllPairsVolume_4D:
+    def __init__(self, group=1):
+        # super(Simple4DVolume, self).__init__()
+        pass
+
+    def calculate(self, left_feat, right_feat, max_disp = None):
+        return self.calculate_allpairs(left_feat, right_feat)
+
+    def calculate_allpairs(self, left_feat, right_feat):
+        b, f, h, y = left_feat.shape
+        b, f, h, z = right_feat.shape
+        disparity_dim = z
+        # all pairs correlation
+        overlap = np.einsum('bfhy,bfhz->bfhyz', left_feat, right_feat) 
+        # shape [b, f, h, w_left, w_right] = [b, f, h, w_left, disparity]
+        # 
+        print(f"overlap shape before permute (4D): {overlap.shape}")
+        overlap = overlap.permute(b, f, disparity_dim, h, y) 
+
+        print(f"overlap shape after permute (4D): {overlap.shape}")
+
+        return overlap[:, :, :self.maxdisp, :, :].contiguous()  # return only maxdisp disparity planes
+    
+class Simple_AllPairsVolume_3D:
+    def __init__(self, group=1):
+        # super(Simple4DVolume, self).__init__()
+        pass
+
+    def calculate(self, left_feat, right_feat, max_disp):
+        return self.calculate_allpairs(left_feat, right_feat, max_disp)
+
+    def calculate_allpairs(self, left_feat, right_feat, max_disp):
+        b, f, h, y = left_feat.shape
+        b, f, h, z = right_feat.shape
+        disparity_dim = z
+        # all pairs correlation
+        overlap = np.einsum('bfhy,bfhz->bhyz', left_feat, right_feat)
+
+        print(f"overlap shape before permute (3D): {overlap.shape}")
+        overlap = overlap.permute(b, disparity_dim, h, y)
+        print(f"overlap shape after permute (3D): {overlap.shape}")
+
+        return overlap[:, :max_disp, :, :].contiguous()  # return only maxdisp disparity planes
+    
+class SimpleCorrelationVolume_3D: # default
+    def __init__(self, group=1):
+        self.group = group
+
+    def calculate(self, left_feat, right_feat, max_disp):
+        return correlation_volume(left_feat, right_feat, max_disp)
+
+    def correlation_volume(left_feature, right_feature, max_disp):
+        b, c, h, w = left_feature.size()
+        cost_volume = left_feature.new_zeros(b, max_disp, h, w)
+        for i in range(max_disp):
+            if i > 0:
+                cost_volume[:, i, :, i:] = (left_feature[:, :, :, i:] * right_feature[:, :, :, :-i]).mean(dim=1)
+            else:
+                cost_volume[:, i, :, :] = (left_feature * right_feature).mean(dim=1)
+        cost_volume = cost_volume.contiguous()
+        return cost_volume # [b, max_disp, h, w]
+
+class SimpleCorrelationVolume_4D:
+    def __init__(self,  group=1):
+        self.group = group
+
+    def calculate(self, left_feat, right_feat, max_disp):
+        return correlation_volume(left_feat, right_feat, max_disp)
+
+    def correlation_volume(left_feature, right_feature, max_disp):
+        b, c, h, w = left_feature.size()
+        cost_volume = left_feature.new_zeros(b, c, max_disp, h, w)
+        for i in range(max_disp):
+            if i > 0:
+                cost_volume[:, :, i, :, i:] = (left_feature[:, :, :, i:] * right_feature[:, :, :, :-i])
+            else:
+                cost_volume[:, :, i, :, :] = (left_feature * right_feature)
+        cost_volume = cost_volume.contiguous()
+        return cost_volume # [b, c, max_disp, h, w]
+    
+class Infer3DbyMLP(nn.Module):
+    """
+    MLP-based processing on 3D cost volume.
+    Applies MLPs across the channel dimension at each spatial location (depth, height, width).
+    Reduces channel dimension from input channels to 1.
+    Input: [batch, channels, depth, height, width] -> Output: [batch, 1, depth, height, width]
+    
+    Args:
+        input_channels (int): Number of input channels
+        hidden_dim (list): List of hidden dimensions for each stage
+        activation (str): Activation function ('relu', 'leaky_relu', 'gelu')
+        dropout (float): Dropout probability (0.0 to disable)
+        normalization (str): Normalization type ('layer', 'batch', 'instance', or None)
+    """
+    
+    def __init__(self, input_channels, hidden_dim, activation='relu', dropout=0.0, 
+                 normalization='layer'):
+        super(Infer3DbyMLP, self).__init__()
+        
+        # Validate inputs
+        if not isinstance(hidden_dim, (list, tuple)):
+            raise ValueError("hidden_dim must be a list or tuple specifying dimensions for each stage")
+        
+        if len(hidden_dim) == 0:
+            raise ValueError("hidden_dim cannot be empty")
+        
+        self.input_channels = input_channels
+        self.hidden_dim = list(hidden_dim)
+        self.mlp_stages = len(hidden_dim)
+        
+        # Build MLP layers
+        layers = []
+        
+        # Build layers based on hidden_dim array
+        prev_dim = input_channels
+        
+        for i, curr_dim in enumerate(self.hidden_dim):
+            # Add linear layer
+            layers.append(nn.Linear(prev_dim, curr_dim))
+            
+            # Add normalization, activation, and dropout (except possibly for the last layer)
+            if i < self.mlp_stages - 1:  # Not the last layer
+                # Add normalization
+                if normalization == 'layer':
+                    layers.append(nn.LayerNorm(curr_dim))
+                elif normalization == 'batch':
+                    layers.append(nn.BatchNorm1d(curr_dim))
+                elif normalization == 'instance':
+                    layers.append(nn.InstanceNorm1d(curr_dim))
+                # elif normalization is None: no normalization
+
+                layers.append(self._get_activation(activation))
+                if dropout > 0.0:
+                    layers.append(nn.Dropout(dropout))
+            else:  # Last layer
+                # For the last layer, optionally add normalization but typically no activation
+                if normalization == 'layer':
+                    layers.append(nn.LayerNorm(curr_dim))
+                elif normalization == 'batch':
+                    layers.append(nn.BatchNorm1d(curr_dim))
+                elif normalization == 'instance':
+                    layers.append(nn.InstanceNorm1d(curr_dim))
+            
+            prev_dim = curr_dim
+        
+        # Ensure the last layer outputs 1 dimension
+        if self.hidden_dim[-1] != 1:
+            layers.append(nn.Linear(self.hidden_dim[-1], 1))
+        
+        self.mlp = nn.Sequential(*layers)
+        
+    def _get_activation(self, activation):
+        """Get activation function by name"""
+        if activation.lower() == 'relu':
+            return nn.ReLU(inplace=True)
+        elif activation.lower() == 'leaky_relu':
+            return nn.LeakyReLU(0.1, inplace=True)
+        elif activation.lower() == 'gelu':
+            return nn.GELU()
+        else:
+            raise ValueError(f"Unsupported activation: {activation}")
+    
+    def forward(self, x):
+        """
+        Forward pass
+        
+        Args:
+            x: Input tensor of shape [batch, channels, depth, height, width]
+            
+        Returns:
+            Output tensor of shape [batch, 1, depth, height, width]
+        """
+        batch, channels, depth, height, width = x.shape
+        
+        # Reshape to process each spatial location (d,h,w) independently
+        # [batch, channels, depth, height, width] -> [batch*depth*height*width, channels]
+        x_reshaped = x.permute(0, 2, 3, 4, 1).contiguous()  # [batch, depth, height, width, channels]
+        x_reshaped = x_reshaped.view(-1, channels)  # [batch*depth*height*width, channels]
+        
+        # Apply MLP to each vector along the channel dimension
+        output = self.mlp(x_reshaped)  # [batch*depth*height*width, 1]
+        
+        # Reshape back to original spatial dimensions
+        output = output.view(batch, depth, height, width, 1)  # [batch, depth, height, width, 1]
+        output = output.permute(0, 4, 1, 2, 3).contiguous()  # [batch, 1, depth, height, width]
+        
+        return output
+
+
 
 
 class CoExCostVolume(nn.Module):

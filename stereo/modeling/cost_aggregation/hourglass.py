@@ -4,6 +4,53 @@ from stereo.modeling.common.basic_block_3d import BasicConv3d, BasicDeconv3d
 from stereo.modeling.models.igev.igev_blocks import FeatureAtt
 
 
+class FlatteningFunction(nn.Module):
+    def __init__(self, input_channels, type='mean'):
+        super(FlatteningFunction, self).__init__()
+        self.input_channels = input_channels
+        self.type = type
+
+        self.conv3d_neighbourhood = nn.Sequential(
+            # pw
+            nn.Conv3d(self.input_channels, 1, kernel_size=(1, 1, 1), stride=1, padding=(0, 1, 1)),
+            nn.BatchNorm3d(1),
+            nn.ReLU(inplace=True)
+        )
+
+    def forward(self, cost_volume):
+        # cost_volume # [b, f, d, h, w]
+        if cost_volume.dim() != 5:
+            raise ValueError("Input cost_volume must be a 4D+batch=5D tensor!" \
+        "Received tensor with shape: {}".format(cost_volume.shape))
+
+        if self.type == 'mean':
+            return cost_volume.mean(dim=1, keepdim=True) # mean across feature dimension
+        elif self.type == 'L2':
+            return cost_volume.norm(p=2, dim=1, keepdim=True)
+        elif self.type == 'L1':
+            return cost_volume.norm(p=1, dim=1, keepdim=True)
+        elif self.type == 'cross_entropy': # similarly to IINet where they calculate uncertainty
+            #not imeplemented yet
+            raise NotImplementedError("Cross entropy flattening is not implemented yet.")
+        elif self.type == 'conv3d_with_neigbourhood':
+            # Apply a 2D convolution to the cost volume
+            b, f, d, h, w = cost_volume.shape
+            cost_volume = nn.Conv3d(f, 1, kernel_size=(1, 3, 3), stride=1, padding=(0, 1, 1))(cost_volume)
+            return cost_volume.view(b, 1, d, h, w).squeeze(1)  # Reshape and remove channel dimension
+        elif self.type == 'conv3d':
+            # Apply a 2D convolution to the cost volume
+            b, f, d, h, w = cost_volume.shape
+            cost_volume = nn.Conv3d(f, 1, kernel_size=(1, 1, 1), stride=1, padding=(0, 1, 1))(cost_volume)
+            return cost_volume.view(b, 1, d, h, w).squeeze(1)  # Reshape and remove channel dimension
+        
+
+
+        # maybe add some normalization methods here
+        
+    
+        
+
+
 class Hourglass(nn.Module):
     def __init__(self, in_channels, backbone_channels=None):
         super(Hourglass, self).__init__()
