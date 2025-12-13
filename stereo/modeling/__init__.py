@@ -16,6 +16,7 @@ from .models.stereobase.trainer import Trainer as StereoBaseGRUTrainer
 from .models.myTestModel.trainer import Trainer as myTestModel
 from .models.oneStereo.trainer import Trainer as oneStereoTrainer
 from .models.iinet.trainer import Trainer as IINetTrainer
+from .models.LeanStereo.trainer import Trainer as LeanStereoTrainer
 
 # If you want to train/eval NMRF-Stereo, you need to build deformable attention and superpixel-guided disparity downsample operator: 'cd stereo/modeling/models/nmrf/ops && sh make.sh && cd ..'
 # from .models.nmrf.trainer import Trainer as NMRFTrainer  
@@ -39,6 +40,8 @@ __all__ = {
     'myTestModel': myTestModel,
     'oneStereo': oneStereoTrainer,
     'IINet': IINetTrainer,
+    # 'LeanLightStereo': LeanStereoTrainer,
+    'LeanStereo': LeanStereoTrainer,
     # 'NMRF': NMRFTrainer
 }
 
