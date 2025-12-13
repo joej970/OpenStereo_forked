@@ -4,28 +4,35 @@ DATA_CONFIG:
 MODEL:
     NAME: oneStereo
     MAX_DISP: 192
-    EXPANSE_RATIO: 4
-    AGGREGATION_BLOCKS: [1, 2, 4]
+    EXPANSE_RATIO: 2
+    AGGREGATION_BLOCKS: [1, 1, 2]
     LEFT_ATT: true
     FIND_UNUSED_PARAMETERS: false
     CKPT: -1
     PRETRAINED_MODEL: ''
-    BACKBONE: MobileNetv2
+    BACKBONE: mobilenetv3_small_100
     BACKBONE_PRETRAINED: True
-    BACKBONE_CFGS: 
-        CONCAT_LEFT_RIGHT: false # concatenates left and right images along batch before feeding to backbone
-        # CONCAT_LEFT_RIGHT_ALONG: batch # horizontal, vertical, multicut 
+    COST_VOLUME_TYPE: SIMPLE_3D
+
+    ADDITIONAL_DEPTH_SRC: true
+    BASIC_DEPTH_ENRICHEMENT_CHANNELS: [24, 16, 8]
+    FUSION_TYPE: "addition" # multiplication, concat
+    FUSION_CONVS: 2
+    EXPANSE_RATIO_DEPTH_SOURCE_AGGREGATION: 2
+    EXPANSE_RATIO_FUSION: 2
+    GATED_BRANCH_BEFORE_FUSION: true
+    ZERO_INITIALISED_CONV_BEFORE_FUSION: true
 
 OPTIMIZATION:
     FREEZE_BN: false
     SYNC_BN: true
-    AMP: false
+    AMP: true
     BATCH_SIZE_PER_GPU: &bs 24
     NUM_EPOCHS: 90
 
     OPTIMIZER:
         NAME: AdamW
-        LR: &lr 0.0012
+        LR: &lr 0.0012 #0.0024
         WEIGHT_DECAY: 1.0e-05
         EPS: 1.0e-08
 
@@ -34,13 +41,6 @@ OPTIMIZATION:
         MAX_LR: *lr
         PCT_START: 0.3
         ON_EPOCH: False
-
-    CLIP_GRAD:
-        TYPE: norm
-        CLIP_VALUE: 1.0
-    # CLIP_GRAD:
-    #     TYPE: value
-    #     CLIP_VALUE: 0.1
 
     CLIP_GRAD:
         TYPE: value

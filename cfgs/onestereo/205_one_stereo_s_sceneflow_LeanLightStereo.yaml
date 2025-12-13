@@ -2,6 +2,7 @@ DATA_CONFIG:
 
 
 MODEL:
+    # NAME: LeanLightStereo
     NAME: oneStereo
     MAX_DISP: 192
     EXPANSE_RATIO: 4
@@ -10,11 +11,24 @@ MODEL:
     FIND_UNUSED_PARAMETERS: false
     CKPT: -1
     PRETRAINED_MODEL: ''
-    BACKBONE: MobileNetv2
-    BACKBONE_PRETRAINED: True
+    BACKBONE: LeanBackbone
     BACKBONE_CFGS: 
-        CONCAT_LEFT_RIGHT: false # concatenates left and right images along batch before feeding to backbone
-        # CONCAT_LEFT_RIGHT_ALONG: batch # horizontal, vertical, multicut 
+        CONCAT_LEFT_RIGHT: true # concatenates left and right images along batch before feeding to backbone
+        OUTPUT_CHANNELS: [40, 80, 160] # at H/4, H/8, H/16
+        HEAD_INTERMEDIATE_CHANNELS: [256, 256, 256]
+        AGGREGATION_CHANNELS: 64
+        UPSAMPLE_TYPE: 'guided'  # 'guided' or 'context_guided' or 'simple' or 'interpolate'
+    BACKBONE_PRETRAINED: True
+    COST_VOLUME_TYPE: SIMPLE_3D
+
+    ADDITIONAL_DEPTH_SRC: false
+    # BASIC_DEPTH_ENRICHEMENT_CHANNELS: [24, 16, 8]
+    # FUSION_TYPE: "addition" # multiplication, concat
+    # FUSION_CONVS: 2
+    # EXPANSE_RATIO_DEPTH_SOURCE_AGGREGATION: 2
+    # EXPANSE_RATIO_FUSION: 2
+    # GATED_BRANCH_BEFORE_FUSION: true
+    # ZERO_INITIALISED_CONV_BEFORE_FUSION: true
 
 OPTIMIZATION:
     FREEZE_BN: false
@@ -25,7 +39,7 @@ OPTIMIZATION:
 
     OPTIMIZER:
         NAME: AdamW
-        LR: &lr 0.0012
+        LR: &lr 0.0006 #0.0024
         WEIGHT_DECAY: 1.0e-05
         EPS: 1.0e-08
 
@@ -34,13 +48,6 @@ OPTIMIZATION:
         MAX_LR: *lr
         PCT_START: 0.3
         ON_EPOCH: False
-
-    CLIP_GRAD:
-        TYPE: norm
-        CLIP_VALUE: 1.0
-    # CLIP_GRAD:
-    #     TYPE: value
-    #     CLIP_VALUE: 0.1
 
     CLIP_GRAD:
         TYPE: value

@@ -13,8 +13,8 @@ MODEL:
     BACKBONE: MobileNetv2
     BACKBONE_PRETRAINED: True
     BACKBONE_CFGS: 
-        CONCAT_LEFT_RIGHT: false # concatenates left and right images along batch before feeding to backbone
-        # CONCAT_LEFT_RIGHT_ALONG: batch # horizontal, vertical, multicut 
+        CONCAT_LEFT_RIGHT: true # concatenates left and right images along batch before feeding to backbone
+        CONCAT_LEFT_RIGHT_ALONG: horizontal # horizontal, vertical, multicut 
 
 OPTIMIZATION:
     FREEZE_BN: false

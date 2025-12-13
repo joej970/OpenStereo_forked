@@ -1,8 +1,8 @@
 DATA_CONFIG:
-    # SUBSET_SIZE_TRAINING: 0.4    # Use 10% of training data
-    # SUBSET_SIZE_VALID: 0.2       # Use 50% of validation data  
-    # SUBSET_SIZE_TEST: 0.1        # Use 100% of test data
-    # SUBSET_SELECTION_SEED: 42  # Seed for reproducibility
+    SUBSET_SIZE_TRAINING: 0.5    # Use 10% of training data
+    SUBSET_SIZE_VALID: 0.5       # Use 50% of validation data  
+    SUBSET_SIZE_TEST: 0.5        # Use 100% of test data
+    SUBSET_SELECTION_SEED: 42  # Seed for reproducibility
 
     DATA_INFOS:
         -   DATASET: SceneFlowDataset
@@ -38,11 +38,15 @@ OPTIMIZATION:
 TRAINER:
     EVAL_INTERVAL: 5
     CKPT_SAVE_INTERVAL: 1
-    MAX_CKPT_SAVE_NUM: 10
+    MAX_CKPT_SAVE_NUM: 2
     LOGGER_ITER_INTERVAL: 10
-    TRAIN_VISUALIZATION: True
-    EVAL_VISUALIZATION: True
+    TRAIN_VISUALIZATION: False
+    EVAL_VISUALIZATION: False
     TEST_VISUALIZATION: True
+    SAVE_ERROR_MAP_LIST: 
+        - /d/hpc/home/zr1677/datasets/sceneflow/driving_finalpass/driving__frames_finalpass_webp/frames_finalpass_webp/15mm_focallength/scene_backwards/fast/left/0001.webp
+        - /d/hpc/home/zr1677/datasets/sceneflow/driving_finalpass/driving__frames_finalpass_webp/frames_finalpass_webp/15mm_focallength/scene_backwards/fast/left/0001.webp
+    
 
 
     

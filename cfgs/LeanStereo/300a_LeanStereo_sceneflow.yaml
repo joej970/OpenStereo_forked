@@ -1,0 +1,71 @@
+DATA_CONFIG:
+
+
+MODEL:
+    NAME: LeanStereo
+    MAX_DISP: 192
+    # EXPANSE_RATIO: 4
+    # AGGREGATION_BLOCKS: [1, 2, 4]
+    # LEFT_ATT: true
+    # FIND_UNUSED_PARAMETERS: false
+    USE_CONCAT_VOLUME: false # # Concat_feature reduces number of feature channels to concat_feature_channel=12
+    LOSS_TYPE: "LogL1Loss"  # "huber" or "smoothL1" or "l2" or "LogL1Loss" or "LogL1Loss_v2"
+
+
+    CKPT: -1
+    PRETRAINED_MODEL: ''
+    BACKBONE_CFGS: 
+        CONCAT_LEFT_RIGHT: true # concatenates left and right images along batch before feeding to backbone
+        CONCAT_LEFT_RIGHT_ALONG: batch # horizontal, vertical, multicut 
+    # BACKBONE: mobilenetv3_small_100
+    # BACKBONE_PRETRAINED: True
+    # COST_VOLUME_TYPE: SIMPLE_3D
+
+    # ADDITIONAL_DEPTH_SRC: true
+    # FUSION_TYPE: "addition" # multiplication, concat
+    # FUSION_CONVS: 2
+    # EXPANSE_RATIO_DEPTH_SOURCE_AGGREGATION: 2
+    # EXPANSE_RATIO_FUSION: 1
+
+OPTIMIZATION:
+    FREEZE_BN: false
+    SYNC_BN: true
+    AMP: true
+    BATCH_SIZE_PER_GPU: &bs 8
+    NUM_EPOCHS: 90
+
+    OPTIMIZER:
+        NAME: AdamW
+        LR: &lr 0.0012 #0.0024
+        WEIGHT_DECAY: 1.0e-05
+        EPS: 1.0e-08
+
+    SCHEDULER:
+        NAME: OneCycleLR
+        MAX_LR: *lr
+        PCT_START: 0.3
+        ON_EPOCH: False
+
+    CLIP_GRAD:
+        TYPE: value
+        CLIP_VALUE: 0.1
+
+EVALUATOR:
+    BATCH_SIZE_PER_GPU: *bs
+    MAX_DISP: 192
+    METRIC:
+        - d1_all
+        - epe
+        - thres_1
+        - thres_2
+        - thres_3
+
+TESTING:
+    BATCH_SIZE_PER_GPU: *bs
+    MAX_DISP: 192
+    METRIC:
+        - d1_all
+        - epe
+        - thres_1
+        - thres_2
+        - thres_3
