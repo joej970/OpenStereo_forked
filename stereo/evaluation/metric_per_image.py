@@ -1,4 +1,5 @@
 import torch
+from stereo.modeling.models.oneStereo.debug_utils import debug_printer
 
 
 def d1_metric(disp_pred, disp_gt, mask):
@@ -30,6 +31,9 @@ def threshold_metric(disp_pred, disp_gt, mask, threshold):
 
 
 def epe_metric(disp_pred, disp_gt, mask):
+    debug_printer.print_of_function_force_print(lambda: f"epe_metric(): disp_pred: Found NaN!", force_print=disp_pred.isfinite().all() == False)
+    debug_printer.print_of_function_force_print(lambda: f"epe_metric(): disp_gt: Found NaN!", force_print=disp_gt.isfinite().all() == False)
+
     E = torch.abs(disp_gt - disp_pred)
     E_masked = torch.where(mask, E, torch.zeros_like(E))
 

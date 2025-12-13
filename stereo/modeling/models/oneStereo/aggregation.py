@@ -4,6 +4,7 @@
 import torch.nn as nn
 import torch.nn.functional as F
 import torch
+from .debug_utils import debug_printer
 
 
 
@@ -84,12 +85,23 @@ class Aggregation(nn.Module):
 
         # First stage: Apply conv0 blocks, maintain dimensions
         # x: [bs, 48, W/4, H/4] -> [bs, 48, W/4, H/4]
+        if self.training:
+            debug_printer.print_of_function_force_print(lambda : f"Aggregation: features_left[0] Found NaN!", force_print=features_left[0].isfinite().all()==False)
+            debug_printer.print_of_function_force_print(lambda : f"input x Found NaN!", force_print=x.isfinite().all()==False)
+
         x = self.conv0(x)
+
+        if self.training:
+            debug_printer.print_of_function_force_print(lambda : f"conv0 x Found NaN!", force_print=x.isfinite().all()==False)
+
         if self.left_att:
             # Apply attention with backbone features at same resolution
             # x: [bs, 48, W, H], features_left[0]: [bs, backbone_channels[0], W, H]
             # Output: [bs, 48, W/4, H/4]
             x = self.att0(x, features_left[0])
+
+        if self.training:
+            debug_printer.print_of_function_force_print(lambda : f"att0 Found NaN!", force_print=x.isfinite().all()==False)
 
         # Second stage: Downsample and increase channels
         # conv1: [bs, 48, W/4, H/4] -> [bs, 96, W/8, H/8]
@@ -100,7 +112,10 @@ class Aggregation(nn.Module):
             # Apply attention with backbone features at 1/2 resolution
             # conv2: [bs, 96, W/2, H/2], features_left[1]: [bs, backbone_channels[1], W/2, H/2]
             # Output: [bs, 96, W/8, H/8]
-            conv2 = self.att2(conv2, features_left[1])
+            conv2 = self.att2(conv2, features_left[1]) # I erronously got: cost 1/16, x 1/8
+
+        if self.training:
+            debug_printer.print_of_function_force_print(lambda : f"att2 Found NaN!", force_print=conv2.isfinite().all()==False)
 
         # Third stage: Further downsample and increase channels
         # conv3: [bs, 96, W/8, H/8] -> [bs, 192, W/16, H/16]
@@ -112,6 +127,9 @@ class Aggregation(nn.Module):
             # conv4: [bs, 192, W/4, H/4], features_left[2]: [bs, backbone_channels[2], W/4, H/4]
             # Output: [bs, 192, W/16, H/16]
             conv4 = self.att4(conv4, features_left[2])
+
+        if self.training:
+            debug_printer.print_of_function_force_print(lambda : f"att4 Found NaN!", force_print=conv4.isfinite().all()==False)
 
         # Decoder stage: Upsample back to original resolution with skip connections
         # conv5: [bs, 192, W/4, H/4] -> [bs, 96, W/2, H/2]
@@ -159,9 +177,17 @@ class MobileV2Residual(nn.Module):
 
     def forward(self, x):
         # v2
+        if self.training:
+            debug_printer.print_of_function_force_print(lambda : f"MobileV2Residual input x Found NaN!", force_print=x.isfinite().all()==False)
         feat = self.pwconv(x)
+        if self.training:
+            debug_printer.print_of_function_force_print(lambda : f"MobileV2Residual after pwconv Found NaN!", force_print=feat.isfinite().all()==False)
         feat = self.dwconv(feat)
+        if self.training:
+            debug_printer.print_of_function_force_print(lambda : f"MobileV2Residual after dwconv Found NaN!", force_print=feat.isfinite().all()==False)
         feat = self.pwliner(feat)
+        if self.training:
+            debug_printer.print_of_function_force_print(lambda : f"MobileV2Residual after pwliner Found NaN!", force_print=feat.isfinite().all()==False)
 
         if self.use_res_connect:
             return x + feat
@@ -185,21 +211,38 @@ class AttentionModule(nn.Module):
 
         self.conv3 = nn.Conv2d(dim, dim, 1)
 
-    def forward(self, cost, x):
+    def forward(self, cost, x): # I erronously got: cost 1/16, x 1/8
         attn = self.conv0(x)
+
+        if self.training:
+            debug_printer.print_of_function_force_print(lambda : f"attn Found NaN!", force_print=attn.isfinite().all()==False)
 
         attn_0 = self.conv0_1(attn)
         attn_0 = self.conv0_2(attn_0)
 
+        if self.training:
+            debug_printer.print_of_function_force_print(lambda : f"attn_0 Found NaN!", force_print=attn_0.isfinite().all()==False)
+
         attn_1 = self.conv1_1(attn)
         attn_1 = self.conv1_2(attn_1)
+
+        if self.training:
+            debug_printer.print_of_function_force_print(lambda : f"attn_1 Found NaN!", force_print=attn_1.isfinite().all()==False)
 
         attn_2 = self.conv2_1(attn)
         attn_2 = self.conv2_2(attn_2)
 
+        if self.training:
+            debug_printer.print_of_function_force_print(lambda : f"att2 Found NaN!", force_print=attn_2.isfinite().all()==False)
+
         attn = attn + attn_0 + attn_1 + attn_2
         attn = self.conv3(attn)
-        return attn * cost
+
+        if self.training:
+            debug_printer.print_of_function_force_print(lambda : f"attn final Found NaN!", force_print=attn.isfinite().all()==False)
+
+        return attn * cost # RuntimeError: The size of tensor a (92) must match the size of tensor b (46) at non-singleton dimension 3
+        # The size of a 1/8 must match the size of b 1/16    
 
 class BasicDepthEnrichment(nn.Module):
     def __init__(self, intermediate_channels=[48, 32, 16], out_depth_bins=[48, 48, 24], mlp_hidden_dim=128, convs_dilated=True):
@@ -287,8 +330,10 @@ class BasicDepthEnrichment(nn.Module):
             nn.BatchNorm2d(mlp_hidden_dim),
             nn.ReLU(inplace=True),
             nn.Conv2d(mlp_hidden_dim, out_depth_bins[0], 1, bias=False),
-            nn.GroupNorm(1, out_depth_bins[0]),  # GroupNorm with 1 group = LayerNorm
-            nn.Hardtanh(min_val=-3.0, max_val=3.0, inplace=True)  # Fast bounded activation
+            nn.BatchNorm2d(out_depth_bins[0]),
+            # nn.GroupNorm(1, out_depth_bins[0]),  # GroupNorm with 1 group = LayerNorm
+            # nn.Hardtanh(min_val=-3.0, max_val=3.0, inplace=True)  # Fast bounded activation
+            nn.ReLU(inplace=True),
         )
         
         # Additional conv2d after mlp1
@@ -310,8 +355,10 @@ class BasicDepthEnrichment(nn.Module):
             nn.BatchNorm2d(mlp_hidden_dim),
             nn.ReLU(inplace=True),
             nn.Conv2d(mlp_hidden_dim, out_depth_bins[0], 1, bias=True),
-            nn.GroupNorm(1, out_depth_bins[0]),  # GroupNorm with 1 group = LayerNorm
-            nn.Hardtanh(min_val=-3.0, max_val=3.0, inplace=True)  # Fast bounded activation
+            nn.BatchNorm2d(out_depth_bins[0]),
+            nn.ReLU(inplace=True),
+            # nn.GroupNorm(1, out_depth_bins[0]),  # GroupNorm with 1 group = LayerNorm
+            # nn.Hardtanh(min_val=-3.0, max_val=3.0, inplace=True)  # Fast bounded activation
         )
         
         # First downsampling convolution (stride=2)
@@ -333,8 +380,10 @@ class BasicDepthEnrichment(nn.Module):
             nn.BatchNorm2d(mlp_hidden_dim),
             nn.ReLU(inplace=True),
             nn.Conv2d(mlp_hidden_dim, out_depth_bins[1], 1, bias=True),
-            nn.GroupNorm(1, out_depth_bins[1]),  # GroupNorm with 1 group = LayerNorm
-            nn.Hardtanh(min_val=-3.0, max_val=3.0, inplace=True)  # Fast bounded activation
+            nn.BatchNorm2d(out_depth_bins[1]),
+            nn.ReLU(inplace=True),
+            # nn.GroupNorm(1, out_depth_bins[1]),  # GroupNorm with 1 group = LayerNorm
+            # nn.Hardtanh(min_val=-3.0, max_val=3.0, inplace=True)  # Fast bounded activation
         )
         
         # Second downsampling convolution (stride=2)
@@ -356,8 +405,10 @@ class BasicDepthEnrichment(nn.Module):
             nn.BatchNorm2d(mlp_hidden_dim),
             nn.ReLU(inplace=True),
             nn.Conv2d(mlp_hidden_dim, out_depth_bins[2], 1, bias=True),
-            nn.GroupNorm(1, out_depth_bins[2]),  # GroupNorm with 1 group = LayerNorm
-            nn.Hardtanh(min_val=-3.0, max_val=3.0, inplace=True)  # Fast bounded activation
+            nn.BatchNorm2d(out_depth_bins[2]),
+            nn.ReLU(inplace=True),
+            # nn.GroupNorm(1, out_depth_bins[2]),  # GroupNorm with 1 group = LayerNorm
+            # nn.Hardtanh(min_val=-3.0, max_val=3.0, inplace=True)  # Fast bounded activation
         )
         
     def forward(self, x):
@@ -558,8 +609,13 @@ class AggregationLittle(nn.Module):
         # print(f"shape b: redir2: {b.shape}")
         # conv3 = F.relu(self.conv3(conv2) + self.redir2(conv2), inplace=True)
 
-        # conv_out = F.relu(a + b, inplace=True)
-        conv_out =  nn.Hardtanh(min_val=-3.0, max_val=3.0, inplace=True)(a + b)
+        from .debug_utils import debug_printer
+
+        debug_printer.print_of_function(lambda : f"a stats: min={a.min():.3f}, max={a.max():.3f}, mean={a.mean():.3f}, std={a.std():.3f}")
+        debug_printer.print_of_function(lambda : f"b stats: min={b.min():.3f}, max={b.max():.3f}, mean={b.mean():.3f}, std={b.std():.3f}")
+
+        conv_out = F.relu(a + b, inplace=True)
+        # conv_out =  nn.Hardtanh(min_val=-3.0, max_val=3.0, inplace=True)(a + b)
 
         # conv_out = F.relu(self.conv3(att2) + self.redir2(att0), inplace=True)
         
