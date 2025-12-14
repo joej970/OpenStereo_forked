@@ -1,5 +1,5 @@
 import torch
-from stereo.modeling.models.oneStereo.debug_utils import debug_printer
+from tools.debug_utils import debug_printer
 
 
 def d1_metric(disp_pred, disp_gt, mask):

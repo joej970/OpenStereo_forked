@@ -7,7 +7,7 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
 
-from stereo.modeling.models.oneStereo.debug_utils import debug_printer
+from tools.debug_utils import debug_printer
 
 def test_debug_printer():
     """Test the debug printer with different configurations."""

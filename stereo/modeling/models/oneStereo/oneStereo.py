@@ -13,7 +13,7 @@ from stereo.modeling.disp_refinement.disp_refinement import context_upsample
 from .backbone import Backbone, FPNLayer
 from .aggregation import Aggregation, BasicDepthEnrichment, AggregationLittle
 from .fusion import FuseDepth
-from .debug_utils import debug_printer
+from tools.debug_utils import debug_printer
 
 # is derived from lightstereo model
 class oneStereo(torch.nn.Module):

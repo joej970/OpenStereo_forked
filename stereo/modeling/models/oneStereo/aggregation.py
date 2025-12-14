@@ -4,7 +4,7 @@
 import torch.nn as nn
 import torch.nn.functional as F
 import torch
-from .debug_utils import debug_printer
+from tools.debug_utils import debug_printer
 
 
 
@@ -609,7 +609,7 @@ class AggregationLittle(nn.Module):
         # print(f"shape b: redir2: {b.shape}")
         # conv3 = F.relu(self.conv3(conv2) + self.redir2(conv2), inplace=True)
 
-        from .debug_utils import debug_printer
+        from tools.debug_utils import debug_printer
 
         debug_printer.print_of_function(lambda : f"a stats: min={a.min():.3f}, max={a.max():.3f}, mean={a.mean():.3f}, std={a.std():.3f}")
         debug_printer.print_of_function(lambda : f"b stats: min={b.min():.3f}, max={b.max():.3f}, mean={b.mean():.3f}, std={b.std():.3f}")

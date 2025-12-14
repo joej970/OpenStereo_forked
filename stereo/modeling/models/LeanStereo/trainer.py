@@ -37,7 +37,7 @@ class Trainer(TrainerTemplate):
 
         # Set debug printer epoch and total samples
         try:
-            from stereo.modeling.models.oneStereo.debug_utils import debug_printer
+            from tools.debug_utils import debug_printer
             debug_printer.set_type('train')
             debug_printer.set_epoch(current_epoch)
             debug_printer.set_total_samples(len(self.train_loader))
@@ -75,7 +75,7 @@ class Trainer(TrainerTemplate):
         for i in range(0, len(self.train_loader)):
             # Update debug printer sample index
             try:
-                from stereo.modeling.models.oneStereo.debug_utils import debug_printer
+                from tools.debug_utils import debug_printer
                 debug_printer.set_sample(i) # this is actually batch number
             except ImportError:
                 pass  # Debug utils not available
@@ -173,7 +173,7 @@ class Trainer(TrainerTemplate):
 
         # Set debug printer epoch and total samples
         try:
-            from stereo.modeling.models.oneStereo.debug_utils import debug_printer
+            from tools.debug_utils import debug_printer
             debug_printer.set_type('eval')
             debug_printer.set_epoch(current_epoch)
             debug_printer.set_total_samples(len(self.eval_loader))
@@ -200,7 +200,7 @@ class Trainer(TrainerTemplate):
         for i, data in enumerate(self.eval_loader):
             # Update debug printer sample index
             try:
-                from stereo.modeling.models.oneStereo.debug_utils import debug_printer
+                from tools.debug_utils import debug_printer
                 debug_printer.set_sample(i) # this is actually batch number
             except ImportError:
                 pass  # Debug utils not available
@@ -309,7 +309,7 @@ class Trainer(TrainerTemplate):
 
                 # Set debug printer epoch and total samples
         try:
-            from stereo.modeling.models.oneStereo.debug_utils import debug_printer
+            from tools.debug_utils import debug_printer
             debug_printer.set_type('test')
             debug_printer.set_epoch(current_epoch)
             debug_printer.set_total_samples(len(self.test_loader))
