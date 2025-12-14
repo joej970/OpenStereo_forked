@@ -25,105 +25,9 @@ from stereo.utils import common_utils
 from stereo.modeling import build_trainer
 from cfgs.data_basic import DATA_PATH_DICT
 
-def recursive_merge(base, update):
-    """
-    Recursively merge two dictionaries. The `update` dictionary will overwrite or add to the `base` dictionary.
-    """
-    for key, value in update.items():
-        if isinstance(value, dict) and key in base and isinstance(base[key], dict):
-            # If both base and update have a dictionary for this key, merge them recursively
-            recursive_merge(base[key], value)
-        else:
-            # Otherwise, overwrite or add the value
-            base[key] = value
-
-def parse_config():
-    parser = argparse.ArgumentParser(description='arg parser')
-    # mode
-    parser.add_argument('--dist_mode', action='store_true', default=False, help='torchrun ddp multi gpu')
-    parser.add_argument('--cfg_file', type=str, default=None, required=True, help='specify the config for training')
-    parser.add_argument('--data_cfg_file', type=str, default=None, required=True, help='specify the dataset config for training')
-    parser.add_argument('--fix_random_seed', action='store_true', default=False, help='')
-    # save path
-    parser.add_argument('--save_root_dir', type=str, default='./output', help='save root dir for this experiment')
-    parser.add_argument('--extra_tag', type=str, default='default', help='extra tag for this experiment')
-    # dataloader
-    parser.add_argument('--workers', type=int, default=8, help='number of workers for dataloader')
-    parser.add_argument('--pin_memory', action='store_true', default=False, help='data loader pin memory')
-    parser.add_argument('--force_override', action='store_true', default=False, help='Force overwrite the existing experiment')
-    parser.add_argument('--backend', type=str, default='nccl', help='gpu intercommunication backend, default is nccl, options: gloo, nccl')
-    # parser.add_argument('--enable_profiler', action='store_true', help='Enable torch.profiler for debugging')
-    # batch_size argument
-    parser.add_argument('--batch_size', type=int, default=None, help='Override BATCH_SIZE_PER_GPU in config')
-    parser.add_argument('--overide_epoch', type=int, default=None, help='Override EPOCH in config.')
-    parser.add_argument('--override_epoch', type=int, default=None, help='Override EPOCH in config.')
-    parser.add_argument('--slurm_job_id', type=str, default=None, help='Optional: SLURM job ID for logging')
-    parser.add_argument('--experiment_id', type=str, default=None, help='Optional: Experiment ID for logging')
-    parser.add_argument('--onnx_file', type=str, default=None, help='Optional: ONNX file name for evaluation')
-    # parser.add_argument('--')
-
-    args = parser.parse_args()
-    yaml_config = common_utils.config_loader(args.cfg_file)
-    cfgs = EasyDict(yaml_config)
-
-    if args.overide_epoch is not None: # back compatibility for typo
-        args.override_epoch = args.overide_epoch
-
-     # Load the data config file
-    if args.data_cfg_file:
-        data_yaml_config = common_utils.config_loader(args.data_cfg_file)
-        data_cfgs = EasyDict(data_yaml_config)
-
-        # # Replace or merge only the DATA_INFOS section
-        # if 'DATA_CONFIG' in data_cfgs and 'DATA_INFOS' in data_cfgs.DATA_CONFIG:
-        #     cfgs.DATA_CONFIG.DATA_INFOS = data_cfgs.DATA_CONFIG.DATA_INFOS  # Replace DATA_INFOS
-        # if 'OPTIMIZATION' in data_cfgs:
-        #     cfgs.OPTIMIZATION.BATCH_SIZE_PER_GPU = data_cfgs.OPTIMIZATION.BATCH_SIZE_PER_GPU
-
-        # Recursively merge data_cfgs into cfgs
-        recursive_merge(cfgs, data_cfgs)
-
-        # --- Override BATCH_SIZE_PER_GPU if --batch_size is provided ---
-    if args.batch_size is not None:
-        if 'OPTIMIZATION' in cfgs and hasattr(cfgs.OPTIMIZATION, 'BATCH_SIZE_PER_GPU'):
-            cfgs.OPTIMIZATION.BATCH_SIZE_PER_GPU = args.batch_size
-        elif 'OPTIMIZATION' in cfgs:
-            cfgs.OPTIMIZATION.BATCH_SIZE_PER_GPU = args.batch_size
-        else:
-            cfgs.OPTIMIZATION = EasyDict({'BATCH_SIZE_PER_GPU': args.batch_size})
-
-    if args.override_epoch is not None:
-        if 'OPTIMIZATION' in cfgs and hasattr(cfgs.OPTIMIZATION, 'NUM_EPOCHS'):
-            cfgs.OPTIMIZATION.NUM_EPOCHS = args.override_epoch
-        elif 'OPTIMIZATION' in cfgs:
-            cfgs.OPTIMIZATION.NUM_EPOCHS = args.override_epoch
-        else:
-            cfgs.OPTIMIZATION = EasyDict({'NUM_EPOCHS': args.override_epoch})
+import config_parsing
 
 
-    dataset_names = [x.DATASET for x in cfgs.DATA_CONFIG.DATA_INFOS]
-    unique_dataset_names = list(set(dataset_names))
-    if len(unique_dataset_names) == 1:
-        exp_dataset_dir = unique_dataset_names[0]
-    else:
-        exp_dataset_dir = 'MultiDataset'
-    args.exp_group_path = os.path.join(exp_dataset_dir, cfgs.MODEL.NAME)
-    args.tag = os.path.basename(args.cfg_file)[:-5]
-    message = f"Experiment group path: {args.exp_group_path}, tag: {args.tag}"
-    print(message)
-
-    for each in cfgs.DATA_CONFIG.DATA_INFOS:
-        dataset_name = each.DATASET
-        if dataset_name == 'KittiDataset':
-            dataset_name = 'KittiDataset15' if 'kitti15' in each.DATA_SPLIT.EVALUATING else 'KittiDataset12'
-        # each.DATA_PATH = DATA_PATH_DICT[dataset_name]
-
-    args.run_mode = 'train'
-    # print(f"data_path: {cfgs.DATA_CONFIG.DATA_INFOS[0].DATA_PATH}")
-    
-    args.output_dir = str(os.path.join(args.save_root_dir, args.exp_group_path, args.tag, args.extra_tag))
-
-    return args, cfgs
 
 # slurm environment variables
 # WORLD_SIZE = int(os.environ['SLURM_NTASKS'])
@@ -149,7 +53,7 @@ def log_configs_to_tensorboard(cfgs, tb_writer, pre='cfgs', step=0):
 
 def main():
     print("In main() function of train.py")
-    args, cfgs = parse_config()
+    args, cfgs = config_parsing.parse_config()
     if args.dist_mode:
         id = os.getpid()
         print(f"Process {id}: Starting distributed process...")
@@ -288,12 +192,26 @@ def main():
                        bar_format='{l_bar}{bar}{r_bar}\n')
     # train loop
     best_epoch = {'idx': 0, 'epe': 1e6}
-    print(f"Process {os.getpid()}: [Rank {global_rank}/{WORLD_SIZE}]: Starting training loop.")
+    
+    # Start timing the training
+    training_start_time = datetime.datetime.now()
+    print(f"Process {os.getpid()}: [Rank {global_rank}/{WORLD_SIZE}]: Starting training loop at {training_start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+    
+    training_epoch_count = 0
+    evaluation_epoch_count = 0
+
+    # perform
+    print("Starting evaluation with epoch=-1 to get measurements before GPU memory gets fragmented by training.")
+    model_trainer.evaluate(-1)
+    print("Initial evaluation completed. Starting training epochs.")
+    
     for current_epoch in tbar:
         model_trainer.train(current_epoch, tbar)
+        training_epoch_count += 1
         model_trainer.save_ckpt(current_epoch)
         if current_epoch % cfgs.TRAINER.EVAL_INTERVAL == 0 or current_epoch == model_trainer.total_epochs - 1:
             model_trainer.evaluate(current_epoch)
+            evaluation_epoch_count += 1
             current_epe = model_trainer.eval_epes.get(current_epoch, None)
             if current_epe is None:
                 print(f"Warning: EPE for epoch {current_epoch} not found")
@@ -303,6 +221,33 @@ def main():
                     best_epoch = {'idx': current_epoch, 'epe': current_epe}
                     model_trainer.save_best_pth(current_epoch)
                     print(f"Saving best model for epoch {best_epoch} with EPE {current_epe}")
+
+    # End timing the training
+    training_end_time = datetime.datetime.now()
+    training_duration = training_end_time - training_start_time
+    total_seconds = training_duration.total_seconds()
+    hours = int(total_seconds // 3600)
+    minutes = int((total_seconds % 3600) // 60)
+    seconds = int(total_seconds % 60)
+    
+    total_epochs = training_epoch_count + evaluation_epoch_count
+    avg_time_per_training_epoch = total_seconds / training_epoch_count if training_epoch_count > 0 else 0
+    
+    training_summary = (
+        f"\n{'='*80}\n"
+        f"TRAINING COMPLETED\n"
+        f"{'='*80}\n"
+        f"Training started:  {training_start_time.strftime('%Y-%m-%d %H:%M:%S')}\n"
+        f"Training ended:    {training_end_time.strftime('%Y-%m-%d %H:%M:%S')}\n"
+        f"Total training time: {hours:02d}:{minutes:02d}:{seconds:02d} ({total_seconds:.1f} seconds)\n"
+        f"Training epochs: {training_epoch_count}, Evaluation epochs: {evaluation_epoch_count}\n"
+        f"{training_epoch_count}+{evaluation_epoch_count}={total_epochs} total epochs\n"
+        f"Average time per training+evaluation epoch: {avg_time_per_training_epoch:.1f} seconds\n"
+        f"{'='*80}"
+    )
+    
+    print(training_summary)
+    logger.info(training_summary)
 
     print(f"Process {os.getpid()}: [Rank {global_rank}/{WORLD_SIZE}]: Training loop completed. Best epoch {best_epoch} with epe {best_epoch['epe']:.4f}")
 
@@ -331,16 +276,19 @@ def main():
         }
     }
 
-    # accuracy (EPE and other benchmarking)
-    print(f"Process {os.getpid()}: [Rank {global_rank}/{WORLD_SIZE}]: Starting testing phase.")
-    test_results = model_trainer.test(current_epoch)
-
-    experiment_summary["test_accuracy_metrics"] = test_results
     
+    # # accuracy (EPE and other benchmarking)
+    # print(f"Process {os.getpid()}: [Rank {global_rank}/{WORLD_SIZE}]: Starting testing phase.")
+    # test_results = model_trainer.test(current_epoch)
 
+    # experiment_summary["test_accuracy_metrics"] = test_results
+
+    del model_trainer
     # inference time benchmark
 
-    model = model_trainer.model
+    args.run_mode = 'eval'
+    infer_model_trainer = build_trainer(args, cfgs, local_rank, global_rank, logger, tb_writer) 
+    model = infer_model_trainer.model
 
     best_pth_name = os.path.join(args.ckpt_dir, 'best_model.pth')
     try:
@@ -357,6 +305,12 @@ def main():
         logger.info(e)
         logger.info(f"Failed to load best model from checkpoint {best_pth_name}. Continuing with the last epoch model.")
 
+
+    # accuracy (EPE and other benchmarking)
+    print(f"Process {os.getpid()}: [Rank {global_rank}/{WORLD_SIZE}]: Starting testing phase.")
+    test_results = infer_model_trainer.test(current_epoch)
+
+    experiment_summary["test_accuracy_metrics"] = test_results
 
     # here you should read vest model from ptx
 
@@ -467,9 +421,11 @@ if __name__ == '__main__':
     # sys.argv = [
     #     'python tools/train.py',  # Script name
     #     # '--cfg_file',      './cfgs/onestereo/one_stereo_s_sceneflow_dev.yaml', 
-    #     '--cfg_file',      './cfgs/onestereo/one_stereo_local_mobileone.yaml', 
+    #     # '--cfg_file',      './cfgs/onestereo/one_stereo_local_mobileone.yaml', 
+    #     '--cfg_file',      './cfgs/LeanStereo/300_LeanStereo_sceneflow.yaml', 
     #     # '--data_cfg_file', './cfgs/onestereo/one_stereo_s_sceneflow_hpc_config.yaml', 
-    #     '--data_cfg_file', './cfgs/onestereo/dataset_sceneflow_dev.yaml', 
+    #     # '--data_cfg_file', './cfgs/onestereo/dataset_sceneflow_dev.yaml', 
+    #     '--data_cfg_file', './data/SceneFlow/sceneflow_hpc_finalpass_dev.yaml', 
     #     '--workers', '2',
     #     '--force_override'
     # ]

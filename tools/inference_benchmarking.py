@@ -63,7 +63,30 @@ class TRTBenchmark:
 
         with open(self.onnx_path, "rb") as f:
             if not parser.parse(f.read()):
-                raise RuntimeError("Failed to parse ONNX model")
+                # Enhanced error reporting
+                error_msg = "Failed to parse ONNX model. Detailed errors:\n"
+                num_errors = parser.num_errors
+                error_msg += f"Number of errors: {num_errors}\n"
+                
+                for i in range(num_errors):
+                    error = parser.get_error(i)
+                    error_msg += f"  Error {i+1}:\n"
+                    error_msg += f"    Code: {error.code()}\n"
+                    error_msg += f"    Description: {error.desc()}\n"
+                    error_msg += f"    File: {error.file()}\n"
+                    error_msg += f"    Line: {error.line()}\n"
+                    error_msg += f"    Function: {error.func()}\n"
+                    error_msg += f"    Node: {error.node()}\n"
+                
+                # Print to stderr for immediate visibility in logs
+                # import sys
+                print(error_msg)
+                
+                raise RuntimeError(error_msg)
+
+        # with open(self.onnx_path, "rb") as f:
+        #     if not parser.parse(f.read()):
+        #         raise RuntimeError("Failed to parse ONNX model")
 
         config = builder.create_builder_config()
         config.max_workspace_size = self.workspace_size
@@ -386,8 +409,92 @@ class TRTBenchmark:
         print(f"Testing TensorRT: Metrics: {results}")
 
         return results
+    
+# Benchmarking using ONNX Runtime
+# @torch.no_grad()
+def onnx_profile(onnx_path, shape, provider='CUDAExecutionProvider', iters=200, warmup=20):
+    import onnxruntime as ort
+    import numpy as np, time, json, collections
 
-def trt_benchmark(onnx_filename, csv_filename = f"trt_benchmark.csv", fp16=True, data_loader=None, cfgs=None):
+    sess_opts = ort.SessionOptions()
+    sess_opts.log_severity_level = 3  # 0=VERBOSE 1=INFO 2=WARNING 3=ERROR 4=FATAL
+    sess_opts.enable_profiling = True
+    # 2025-11-14 17:51:17.445014573 [V:onnxruntime:, session_state.cc:1146 VerifyEachNodeIsAssignedToAnEp] Node placements
+    # 2025-11-14 17:51:17.445030422 [V:onnxruntime:, session_state.cc:1149 VerifyEachNodeIsAssignedToAnEp]  All nodes placed on [CUDAExecutionProvider]. Number of nodes: 519
+    sess_opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+    # Optional: save optimized graph
+    sess_opts.optimized_model_filepath = onnx_path.replace(".onnx", ".opt.onnx")
+
+    providers = [(provider, {"cudnn_conv_algo_search": "DEFAULT"}), "CPUExecutionProvider"] if provider != "CPUExecutionProvider" else ["CPUExecutionProvider"]
+    sess = ort.InferenceSession(onnx_path, sess_options=sess_opts, providers=providers)
+
+    B, C, H, W = shape
+    feeds = {}
+    inps = sess.get_inputs()
+    feeds[inps[0].name] = np.random.randn(B, C, H, W).astype(np.float32)
+    feeds[inps[1].name] = np.random.randn(B, C, H, W).astype(np.float32)
+    # optional extra inputs (e.g., depth source)
+    for i in inps[2:]:
+        if 'depth' in i.name:
+            feeds[i.name] = np.random.randn(B, H // 2, W // 2).astype(np.float32)
+
+    for _ in range(warmup):
+        sess.run(None, feeds)
+
+    t0 = time.time()
+    for _ in range(iters):
+        sess.run(None, feeds)
+    t1 = time.time()
+    throughput = iters / (t1 - t0)
+
+    profile_path = sess.end_profiling()
+    print(f"ORT profile saved to: {profile_path}")
+
+    # Robust profile parser (handles chrome-trace JSON and JSONL)
+    def load_ort_profile(path):
+        import json, os
+        with open(path, "rb") as f:
+            raw = f.read()
+        # Strip BOM and NULs, decode
+        if raw.startswith(b"\xef\xbb\xbf"):
+            raw = raw[3:]
+        txt = raw.replace(b"\x00", b"").decode("utf-8", errors="ignore").strip()
+        # Try full JSON first (dict or list)
+        try:
+            obj = json.loads(txt)
+            if isinstance(obj, dict):
+                return obj.get("traceEvents", obj.get("events", []))
+            if isinstance(obj, list):
+                return obj
+        except json.JSONDecodeError:
+            pass
+        # Fallback: JSONL (one JSON per line)
+        events = []
+        for line in txt.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            # strip BOM if present per-line
+            if line and line[0] == "\ufeff":
+                line = line[1:]
+            try:
+                events.append(json.loads(line))
+            except json.JSONDecodeError:
+                # skip lines that aren’t JSON records
+                continue
+        return events
+
+    events = load_ort_profile(profile_path)
+    agg_ms = collections.Counter()
+    for e in events:
+        if e.get("cat") == "Node":  # operator node
+            agg_ms[e["name"]] += e["dur"] / 1000.0  # us -> ms
+    print("Top ops by total time (ms):")
+    for name, ms in agg_ms.most_common(20):
+        print(f"{name:40s} {ms:8.3f}")
+    return throughput, profile_path
+
+def trt_benchmark(onnx_filename, csv_filename = None, fp16=True, data_loader=None, cfgs=None):
     """
     Convenience function to benchmark an ONNX model using TensorRT.
     Builds the engine, warms up, runs timing, and prints latency.
@@ -395,10 +502,11 @@ def trt_benchmark(onnx_filename, csv_filename = f"trt_benchmark.csv", fp16=True,
     bench = TRTBenchmark(onnx_filename, fp16=fp16, data_loader=data_loader, cfgs=cfgs)
     bench.build_engine()
     engine_footprint = bench.get_engine_memory_footprint()
-    bench.warmup(iterations=10)
-    avg, p95, memory_inference_stats = bench.benchmark(runs=100)
+    bench.warmup(iterations=50)
+    avg, p95, memory_inference_stats = bench.benchmark(runs=500)
     ips = 1000 / avg
-    bench.profile_layers(top_n=100, profile_file=csv_filename)
+    if csv_filename is not None:
+        bench.profile_layers(top_n=100, profile_file=csv_filename)
     print(f"Average latency: {avg:.3f} ms")
     print(f"p95 latency: {p95:.3f} ms")
     print(f"Iterations per second: {ips:.2f} inferences/sec.")

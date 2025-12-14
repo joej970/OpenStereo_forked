@@ -4,7 +4,6 @@ Script to parse training log files and extract metrics, losses, and generate plo
 
 Usage: python parse_training_log.py <log_file.err or .log>
 """
-
 import sys
 import re
 import json
@@ -21,8 +20,8 @@ project_root = os.path.dirname(current_dir)  # Go up one level from tools/ to pr
 sys.path.insert(0, project_root)
 
 from stereo.utils import common_utils
-import train as train_utils
 
+import config_parsing
 
 def parse_tensor_dict(tensor_str):
     """Parse a string containing tensor values into a regular dict."""
@@ -41,7 +40,7 @@ def parse_tensor_dict(tensor_str):
                 result[key] = -1
         return result
     except Exception as e:
-        print(f"Warning: Could not parse tensor dict: {tensor_str}")
+        print(f"Warning: Could not parse tensor dict: {tensor_str}. Error: {e}")
         return {}
 
 
@@ -291,12 +290,14 @@ def parse_tensorrt_json(json_filepath):
     Returns:
         dict: Dictionary containing extracted TensorRT metrics
     """
-    tensorrt_data = {
+    tensorrt_data_single = {
         'inference_throughput': -1,
         'trt_epe': -1,
         'engine_footprint_mb': -1,
         'mem_mb_mean': -1
     }
+
+    tensorrt_data = {}
     
     json_path = Path(json_filepath)
     if not json_path.exists():
@@ -305,25 +306,37 @@ def parse_tensorrt_json(json_filepath):
     
     try:
         with open(json_path, 'r') as f:
-            data = json.load(f)
+            json_data = json.load(f)
         
-        # Extract inference throughput
-        if 'inference_benchmark' in data:
-            onnx_trt = data['inference_benchmark'].get('Onnx_trt_inference', {})
-            tensorrt_data['inference_throughput'] = onnx_trt.get('inference', -1)
-        
-        # Extract TensorRT EPE
-        if 'test_accuracy_metrics_trt' in data:
-            trt_metrics = data['test_accuracy_metrics_trt']
-            tensorrt_data['trt_epe'] = trt_metrics.get('epe', -1)
-        
-        # Extract memory information
-        if 'memory' in data:
-            memory_info = data['memory']
-            if 'engine_footprint' in memory_info:
-                tensorrt_data['engine_footprint_mb'] = memory_info['engine_footprint'].get('total_model_memory_mb', -1)
-            if 'inference_memory_stats' in memory_info:
-                tensorrt_data['mem_mb_mean'] = memory_info['inference_memory_stats'].get('mem_mb_mean', -1)
+        run_idx = 0
+        run_name = f"run_{run_idx:02d}"
+        while run_name in json_data:
+            print(f"Parsing data for {run_name}")
+            data = json_data[run_name]
+            print(f"data: {data}")
+            print(f"data keys: {data.keys()}")
+            # Extract inference throughput
+            if 'inference_benchmark' in data:
+                onnx_trt = data['inference_benchmark'].get('Onnx_trt_inference', {})
+                tensorrt_data_single['inference_throughput'] = onnx_trt.get('inference', -1)
+            
+            # Extract TensorRT EPE
+            if 'test_accuracy_metrics_trt' in data:
+                trt_metrics = data['test_accuracy_metrics_trt']
+                tensorrt_data_single['trt_epe'] = trt_metrics.get('epe', -1)
+            
+            # Extract memory information
+            if 'memory' in data:
+                memory_info = data['memory']
+                if 'engine_footprint' in memory_info:
+                    tensorrt_data_single['engine_footprint_mb'] = memory_info['engine_footprint'].get('total_model_memory_mb', -1)
+                if 'inference_memory_stats' in memory_info:
+                    tensorrt_data_single['mem_mb_mean'] = memory_info['inference_memory_stats'].get('mem_mb_mean', -1)
+
+            tensorrt_data[run_name] = tensorrt_data_single.copy()
+
+            run_idx += 1
+            run_name = f"run_{run_idx:02d}"
         
         print(f"Successfully parsed TensorRT JSON: {json_path}")
         
@@ -361,9 +374,23 @@ def do_log_parsing(filename, json_filename=None):
     # Parse TensorRT JSON file if provided
     tensorrt_data = None
     if json_filename is not None:
-        print(f"Parsing TensorRT JSON file: {json_filename}")
-        tensorrt_data = parse_tensorrt_json(json_filename)
-    
+        tensorrt_data = []
+        i = 1
+
+        while(os.path.exists(json_filename)):
+            print(f"Parsing TensorRT JSON file: {json_filename}")
+            temp_data = parse_tensorrt_json(json_filename)
+            print(f"temp_data (tensor_rt_data) parsed: {temp_data}")
+            tensorrt_data.append(temp_data)
+
+            json_filename = json_filename[:-8] + f"_{i:02d}.json"
+            i += 1
+
+        if i == 1:
+            print(f"No TensorRT JSON files found at: {json_filename}")
+
+    print(f"tensorrt_data: {tensorrt_data}")
+
     # Add job and experiment info to data
     data['job_info'] = {
         'job_id': job_id,
@@ -446,30 +473,43 @@ def do_log_parsing(filename, json_filename=None):
     
     # Show TensorRT benchmark information (if available)
     if 'tensorrt_benchmark' in data:
-        trt_data = data['tensorrt_benchmark']
-        summary_lines.append("")  # Add blank line for separation
-        summary_lines.append("TensorRT Benchmark:")
-        
-        if 'inference_throughput' in trt_data:
-            summary_lines.append(f"  Inference throughput: {trt_data['inference_throughput']:.2f} inferences/sec")
-        else:
-            summary_lines.append(f"  Inference throughput: -1")
-        
-        if 'trt_epe' in trt_data:
-            summary_lines.append(f"  TensorRT EPE: {trt_data['trt_epe']:.4f}")
-        else:
-            summary_lines.append(f"  TensorRT EPE: -1")
+        print(f"tensorrt_benchmark: {data['tensorrt_benchmark']}")
+        for sess_t, sess_trt_data in enumerate(data['tensorrt_benchmark']):
+            print(f"DEBUG: sess_t: {sess_t}, sess_trt_data: {sess_trt_data}")
+            print(f"DEBUG: sess_trt_data.values(): {sess_trt_data.values()}")
+            for run_t, run_trt_data in enumerate(sess_trt_data.values()):
+                print(f"DEBUG: run_t: {run_t}, run_trt_data: {run_trt_data}")
 
-        if 'engine_footprint_mb' in trt_data:
-            summary_lines.append(f"  Engine footprint: {trt_data['engine_footprint_mb']:.2f} MB")
-        else:
-            summary_lines.append(f"  Engine footprint: -1")
+                # t = f"(run {run_t})" if len(trt_data) > 1 else "" 
+        # trt_data = data['tensorrt_benchmark']
+                trt_data = sess_trt_data[run_trt_data]
+                print(f"DEBUG: trt_data: {trt_data}")
 
-        if 'mem_mb_mean' in trt_data:
-            summary_lines.append(f"  Memory usage (mean): {trt_data['mem_mb_mean']:.2f} MB")
-        else:
-            summary_lines.append(f"  Memory usage (mean): -1")
-    
+                summary_lines.append("")  # Add blank line for separation
+                summary_lines.append(f"TensorRT Benchmark {sess_t}|{run_t}:")
+                
+                if 'inference_throughput' in trt_data:
+                    summary_lines.append(f"  Inference throughput {sess_t}|{run_t}: {trt_data['inference_throughput']:.2f} inferences/sec")
+                else:
+                    summary_lines.append(f"  Inference throughput {sess_t}|{run_t}: -1")
+                
+                if 'trt_epe' in trt_data:
+                    summary_lines.append(f"  TensorRT EPE {sess_t}|{run_t}: {trt_data['trt_epe']:.4f}")
+                else:
+                    summary_lines.append(f"  TensorRT EPE {sess_t}|{run_t}: -1")
+
+                if 'engine_footprint_mb' in trt_data:
+                    summary_lines.append(f"  Engine footprint {sess_t}|{run_t}: {trt_data['engine_footprint_mb']:.2f} MB")
+                else:
+                    summary_lines.append(f"  Engine footprint {sess_t}|{run_t}: -1")
+
+                if 'mem_mb_mean' in trt_data:
+                    summary_lines.append(f"  Memory usage (mean) {sess_t}|{run_t}: {trt_data['mem_mb_mean']:.2f} MB")
+                else:
+                    summary_lines.append(f"  Memory usage (mean) {sess_t}|{run_t}: -1")
+    else:
+        print(f"No TensorRT benchmark data found in {data}")
+
     # Join all summary lines
     summary_text = "\n".join(summary_lines)
     
@@ -497,18 +537,18 @@ def parse_log_filename(args):
     return os.path.join(args.output_dir, f"{args.slurm_job_id}_{args.experiment_id}.log")
 
 def parse_tensorRT_json_filename(args):
-    return os.path.join(args.output_dir, f"{args.slurm_job_id}_{args.experiment_id}_tensorRT_summary.json")
+    return os.path.join(args.output_dir, f"{args.slurm_job_id}_{args.experiment_id}_tensorRT_summary_00.json")
 
 def main():
 
-    print(f"parse_training_log.py: Starting log parsing...")
+    print(f"parse_training_log.py: Starting log parsing with {len(sys.argv)} arguments...")
 
     # Check number of command line arguments
-    if len(sys.argv) == 2 or len(sys.argv) == 3:
+    if len(sys.argv) == 3 or len(sys.argv) == 5:
         # Single argument - use current behavior
         parser = argparse.ArgumentParser(description='Parse training log file and extract metrics')
-        parser.add_argument('log_file', help='Path to the .err or .log log file')
-        parser.add_argument('tensorRT_json_file', help='Path to the TensorRT JSON file', default=None)
+        parser.add_argument('--log_file', type=str, default=None, help='Path to the .err or .log log file')
+        parser.add_argument('--tensorRT_json_file', type=str, default=None, help='Path to the TensorRT JSON file')
         args = parser.parse_args()
         
         try:
@@ -521,7 +561,7 @@ def main():
     else:
         # Multiple arguments - the same call as to the train.py - use parse_config()
         print(f"Multiple arguments detected, using parse_config() for configuration parsing")
-        args, cfgs = train_utils.parse_config()
+        args, cfgs = config_parsing.parse_config()
         tensorRT_json_file = parse_tensorRT_json_filename(args)
         filename = parse_log_filename(args)
         do_log_parsing(filename, tensorRT_json_file)

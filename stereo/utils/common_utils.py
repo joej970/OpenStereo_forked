@@ -270,3 +270,51 @@ def get_pos_fullres(fx, w, h):
     z = np.ones_like(x)
     pos_grid = np.stack([x, y, z], axis=0).astype(np.float32)
     return pos_grid
+
+def get_filename_from_path(full_path: str) -> str:
+    """
+    Trim everything before the first occurrence of dataset_name (case-insensitive),
+    then replace path separators with '-' to create a filename-friendly string.
+    If dataset_name is not found, the full path (normalized) is used.
+    """
+    # normalize to forward slashes to make searching consistent across platforms
+    norm = full_path.replace('\\', '/')
+    idx = norm.lower().find('datasets')
+    if idx != -1: # if 'datasets' found
+        idx = idx + len('datasets/')  # move index to the end of 'datasets'
+    sub = norm[idx+1:] if idx != -1 else norm # skip 'datasets/' part
+    sub = sub.strip('/')               # remove any leading/trailing slashes
+    # remove extension of the final path component
+    sub = str(Path(sub).with_suffix(''))
+    return sub.replace('/', '-')       # replace remaining separators with '-'
+
+def save_tensor_as_png(tensor: torch.Tensor, path: str, png_compression: int = 3):
+    """
+    Save a torch tensor as PNG using OpenCV (no PIL).
+    - tensor: CHW or HWC, float (0-1 or 0-255) or uint8
+    - path: output file path (should end with .png)
+    - png_compression: 0 (no) .. 9 (max compression)
+    """
+    img = tensor.detach().cpu()
+
+    # convert CHW -> HWC if needed (common for PyTorch)
+    if img.dim() == 3 and img.shape[0] in (1, 3):
+        img = img.permute(1, 2, 0)
+
+    img = img.contiguous().numpy()
+
+    # convert floats -> uint8 (supports [0,1] or [0,255])
+    if np.issubdtype(img.dtype, np.floating):
+        if img.max() <= 1.0:
+            img = (np.clip(img, 0.0, 1.0) * 255.0).round().astype(np.uint8)
+        else:
+            img = np.clip(img, 0.0, 255.0).round().astype(np.uint8)
+    else:
+        img = np.clip(img, 0, 255).astype(np.uint8)
+
+    # OpenCV expects BGR for color images
+    if img.ndim == 3 and img.shape[2] == 3:
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    cv2.imwrite(path, img, [cv2.IMWRITE_PNG_COMPRESSION, int(png_compression)])

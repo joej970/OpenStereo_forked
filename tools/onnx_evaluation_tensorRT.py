@@ -1,6 +1,4 @@
 import os
-import datetime
-import torch    
 import sys
 import json
 
@@ -13,7 +11,7 @@ from stereo.datasets import build_dataloader
 from easydict import EasyDict
 import measure
 
-from train import parse_config
+import config_parsing
 
 def build_test_loader(args, cfgs):
     test_set, test_loader, test_sampler = build_dataloader(
@@ -46,24 +44,55 @@ def run_trt_benchmark(onnx_file, args, cfgs):
     logger.info(f"Running TensorRT benchmark on ONNX file: {onnx_file}")
     # csv_filename = f"trt_benchmark_{args.slurm_job_id}.csv"
     csv_filename = os.path.join(args.output_dir, f"trt_benchmark.csv")
-    avg, p95, ips, metrics, engine_footprint, memory_inference_stats = inference_benchmarking.trt_benchmark(onnx_file, csv_filename=csv_filename, fp16=True, data_loader=test_loader, cfgs=cfgs)
+    curr_csv_filename = csv_filename
 
-    experiment_summary["inference_benchmark"] = {}
-    experiment_summary["test_accuracy_metrics_trt"] = {}
-    experiment_summary["memory"] = {}
+    # idx = 0
+    experiment_summary = {}
 
+    runs = args.onnx_eval_runs if hasattr(args, 'onnx_eval_runs') else 3
+    for run_idx in range(runs):
+    # while os.path.exists(onnx_file):
+        avg, p95, ips, metrics, engine_footprint, memory_inference_stats = inference_benchmarking.trt_benchmark(onnx_file, csv_filename=curr_csv_filename, fp16=True, data_loader=test_loader, cfgs=cfgs)
 
-    experiment_summary["inference_benchmark"]["Onnx_trt_inference"] = {
-        "avg_latency": avg,
-        "p95_latency": p95,
-        "inference": ips
-    }
-    experiment_summary["test_accuracy_metrics_trt"] = metrics
-    experiment_summary["memory"] = {
-        "engine_footprint": engine_footprint,
-        "inference_memory_stats": memory_inference_stats
-    }
+        curr_csv_filename = None
 
+        summary = {}
+        summary["inference_benchmark"] = {}
+        summary["test_accuracy_metrics_trt"] = {}
+        summary["memory"] = {}
+
+        summary["inference_benchmark"]["Onnx_trt_inference"] = {
+            "avg_latency": avg,
+            "p95_latency": p95,
+            "inference": ips
+        }
+        summary["test_accuracy_metrics_trt"] = metrics
+        summary["memory"] = {
+            "engine_footprint": engine_footprint,
+            "inference_memory_stats": memory_inference_stats
+        }
+
+        experiment_summary[f"run_{run_idx:02d}"] = summary
+        # idx += 1
+        # onnx_file = f"{onnx_file[:-8]}_run{idx}.onnx"
+
+        print(f"Completed TensorRT benchmark run {run_idx}/{runs-1}: summary: {summary}")
+
+        # experiment_summary["inference_benchmark"] = {}
+        # experiment_summary["test_accuracy_metrics_trt"] = {}
+        # experiment_summary["memory"] = {}
+
+        # experiment_summary["inference_benchmark"]["Onnx_trt_inference"] = {
+        #     "avg_latency": avg,
+        #     "p95_latency": p95,
+        #     "inference": ips
+        # }
+        # experiment_summary["test_accuracy_metrics_trt"] = metrics
+        # experiment_summary["memory"] = {
+        #     "engine_footprint": engine_footprint,
+        #     "inference_memory_stats": memory_inference_stats
+        # }
+    print(f"Populated experiment summary: {experiment_summary}")
 
     import analyze_trt_csv_profile as analyze_trt_csv_profile
     
@@ -95,15 +124,16 @@ def run_trt_benchmark(onnx_file, args, cfgs):
     print(f"Experiment summary: {formatted_string}")
     logger.info(f"Experiment summary: {formatted_string}")
     # save to file as json
-    summary_file = os.path.join(args.output_dir, f"{args.slurm_job_id}_{args.experiment_id}_tensorRT_summary.json")
+    i = 0
+    summary_file = os.path.join(args.output_dir, f"{args.slurm_job_id}_{args.experiment_id}_tensorRT_summary_{i:02d}.json")
 
     # if summary_file already exist, create new file with _01, _02, etc. suffix appended
-    if os.path.exists(summary_file):
-        base, ext = os.path.splitext(summary_file)
-        i = 1
-        while os.path.exists(summary_file):
-            summary_file = f"{base}_{i:02d}{ext}"
-            i += 1
+    # if os.path.exists(summary_file):
+        # base, ext = os.path.splitext(summary_file)
+    while os.path.exists(summary_file):
+        summary_file = f"{summary_file[:-8]}_{i:02d}.json"
+        # summary_file = f"{base}_{i:02d}{ext}"
+        i += 1
 
     with open(summary_file, 'w') as f:
         json.dump(experiment_summary, f, indent=4, default=str)
@@ -123,7 +153,7 @@ if __name__ == "__main__":
     print(f"running command: ") 
     print(f"python ./OpenStereo_forked/tools/onnx_evaluation_tensorRT.py {sys.argv[1:]}")
 
-    args, cfgs = parse_config()
+    args, cfgs = config_parsing.parse_config()
     
     if args.onnx_file is not None:
         onnx_file = args.onnx_file

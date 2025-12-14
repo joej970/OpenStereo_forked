@@ -1,5 +1,6 @@
 # @Time    : 2024/3/1 11:17
 # @Author  : zhangchenming
+from __future__ import annotations
 import time
 from sympy import shape
 import torch
@@ -10,10 +11,12 @@ import onnx
 import thop
 from easydict import EasyDict
 from tqdm import tqdm
+from fvcore.nn import FlopCountAnalysis, parameter_count_table
+from typing import Dict, Any, Mapping
 
 sys.path.insert(0, './')
 from stereo.utils import common_utils
-from stereo.modeling import build_trainer
+# from stereo.modeling import build_trainer
 
 
 def parse_config():
@@ -28,13 +31,13 @@ def parse_config():
     return args, cfgs
 
 
-def main():
-    args, cfgs = parse_config()
-    model = build_trainer(args, cfgs, local_rank=0, global_rank=0, logger=None, tb_writer=None).model
+# def main():
+#     args, cfgs = parse_config()
+#     model = build_trainer(args, cfgs, local_rank=0, global_rank=0, logger=None, tb_writer=None).model
 
-    shape = [1, 3, 544, 960]
-    infer_time(model, shape)
-    measure(model, shape)
+#     shape = [1, 3, 544, 960]
+#     infer_time(model, shape)
+#     measure(model, shape)
 
 
 @torch.no_grad()
@@ -68,15 +71,35 @@ def measure(model, shape):
     # for i, input_tensor in enumerate(tuple(inputs_arr)):
     #     print(f"Shape of input tensor {i} (as tuple): {input_tensor.shape}")
 
+    flops_fvcore = FlopCountAnalysis(model_copy, inputs=tuple(inputs_arr))
+    raw = flops_fvcore.by_module() # hotspot modules
+    # print(f"FLOPs by module (fvcore): {raw}")
+    pretty = pretty_print_module_counter(raw)
+    print("FLOPs by module (fvcore) - pretty printed:")
+    print(pretty)
+    print("Done pretty printing FLOPs by module.")
+
+    def count_model_params(model):
+        num_params = sum(p.numel() for p in model.parameters())
+        return num_params
+    params_fvcore = count_model_params(model_copy)
+    print(parameter_count_table(model_copy))
+    
     flops, params = thop.profile(model_copy, inputs=tuple(inputs_arr))
+
+    # print(flops.by_module())  # hotspot modules
 
     # Clear the copy to free memory
     del model_copy
     # flops, params = thop.profile(model, inputs=(left_input,right_input))
     message_1 = f"Number of calculates: {flops / 1e9:.2f} GFlops"
     message_2 = f"Number of parameters: {params / 1e6:.2f} M"
+    message_3 = f"FLOPs (fvcore): {flops_fvcore.total()/1e9:.2f} GFlops"
+    message_4 = f"Parameters (fvcore): {params_fvcore / 1e6:.2f} M"
     print(message_1)
     print(message_2)
+    print(message_3)
+    print(message_4)
     return message_1, message_2, flops, params
 
 @torch.no_grad()
@@ -305,5 +328,87 @@ def format_dict_multiline(d, indent=0):
         
         return "\n".join(lines)
 
+
+
+
+# these function are to be used on fvcore.by_module() output for pretty printing
+
+def build_module_tree(stats: Mapping[str, int], sep: str = ".", root_key: str = "") -> Dict[str, Any]:
+    """
+    Build a nested dictionary from a flat Counter of module paths.
+    Each node is a dict; if a node has its own value it is stored under key '_value'.
+    """
+    root: Dict[str, Any] = {}
+    for key, val in stats.items():
+        if key == root_key:
+            root["_value"] = val
+            continue
+        if not key:
+            continue
+        parts = key.split(sep)
+        node = root
+        for i, part in enumerate(parts):
+            node = node.setdefault(part, {})
+            if i == len(parts) - 1:
+                node["_value"] = val
+    return root
+
+def _node_score(node: Dict[str, Any]) -> int:
+    """
+    Heuristic score used for sorting by value:
+    prefers node['_value'] if present, otherwise sum of immediate children with values.
+    """
+    if "_value" in node:
+        return int(node["_value"])
+    print(f"Couldnt't find _value in node: {node}")
+    s = 0
+    for v in node.values():
+        if isinstance(v, dict) and "_value" in v:
+            s += int(v["_value"])
+    return s
+
+def format_module_tree(
+    tree: Dict[str, Any],
+    indent_level: int = 0,
+    sort_by: str = "value",  # "value" or "name"
+    descending: bool = True,
+) -> str:
+    """
+    Return a string with one entry per line, grouped and tab-indented by hierarchy.
+    """
+    lines = []
+
+    def iter_children(n: Dict[str, Any]):
+        items = [(k, v) for k, v in n.items() if k != "_value" and isinstance(v, dict)]
+        if sort_by == "value":
+            items.sort(key=lambda kv: (_node_score(kv[1]), kv[0]), reverse=descending)
+        else:
+            items.sort(key=lambda kv: kv[0], reverse=descending)
+        return items
+
+    # Print root (total) if present
+    if "_value" in tree:
+        lines.append("\t" * indent_level + f"<total>: {int(tree['_value']):,}")
+
+    def visit(name: str, node: Dict[str, Any], level: int):
+        if "_value" in node:
+            lines.append("\t" * level + f"{name}: {int(node['_value']):,}")
+        for child_name, child in iter_children(node):
+            visit(child_name, child, level + 1)
+
+    for top_name, top_node in iter_children(tree):
+        visit(top_name, top_node, indent_level)
+
+    return "\n".join(lines)
+
+# the actual function to be used
+def pretty_print_module_counter(stats: Mapping[str, int]) -> str:
+    """
+    Convenience: build + format in one call.
+    """
+    tree = build_module_tree(stats)
+    return format_module_tree(tree, sort_by="value", descending=True)
+
 if __name__ == '__main__':
-    main()
+    print("This is a module. You can import and use its functions.")
+    # main()
