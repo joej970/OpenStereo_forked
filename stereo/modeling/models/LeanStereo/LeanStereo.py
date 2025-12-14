@@ -353,9 +353,9 @@ class LeanStereoNet(nn.Module):
         right = data['right']
 
         # if self.backbone_conf.get('CONCAT_LEFT_RIGHT', False):
-        # if (self.backbone_conf is not None) and (self.backbone_conf.get('CONCAT_LEFT_RIGHT', False)): # if not 
-        if self.backbone_conf.get('CONCAT_LEFT_RIGHT', False): # if not 
+        # if self.backbone_conf.get('CONCAT_LEFT_RIGHT', False): # if not 
             # print("Using concatenated left-right images for feature extraction.")
+        if (self.backbone_conf is not None) and (self.backbone_conf.get('CONCAT_LEFT_RIGHT', False)):
             features_left, features_right = self.feature_extraction(left, right) # [H/8, W/8]
         else:
             # print(f"Using separate left and right images for feature extraction due to self.backbone_conf: {self.backbone_conf}")

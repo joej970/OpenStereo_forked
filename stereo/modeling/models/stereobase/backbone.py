@@ -33,11 +33,15 @@ class Feature(SubModule):
     def __init__(self):
         super(Feature, self).__init__()
         model = timm.create_model('mobilenetv2_100', pretrained=True, features_only=True)
+        # print("MobileNetV2 backbone loaded model: {}".format(model))
+        # Access the underlying model
+        model = model.model if hasattr(model, 'model') else model
+        # print("MobileNetV2 backbone loaded model.model: {}".format(model))
         layers = [1, 2, 3, 5, 6]
         chans = [16, 24, 32, 96, 160]
         self.conv_stem = model.conv_stem
-        self.bn1 = model.bn1
-        self.act1 = model.act1
+        self.bn1 = model.bn1 # includes activation
+        # self.act1 = model.act1
 
         self.block0 = torch.nn.Sequential(*model.blocks[0:layers[0]])
         self.block1 = torch.nn.Sequential(*model.blocks[layers[0]:layers[1]])
@@ -54,7 +58,8 @@ class Feature(SubModule):
                                  kernel_size=3, stride=1, padding=1)
 
     def forward(self, x):
-        x = self.act1(self.bn1(self.conv_stem(x)))
+        # x = self.act1(self.bn1(self.conv_stem(x)))
+        x = self.bn1(self.conv_stem(x))
         x2 = self.block0(x)
         x4 = self.block1(x2)
         x8 = self.block2(x4)

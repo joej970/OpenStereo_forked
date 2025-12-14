@@ -78,7 +78,8 @@ class FuseDepth(nn.Module):
         else:
             self.conv_layers = nn.Identity()
 
-        self.layer_norm = nn.GroupNorm(1, src_0_depth_bins)
+        # self.layer_norm = nn.GroupNorm(1, src_0_depth_bins)
+        self.layer_norm = nn.BatchNorm2d(src_0_depth_bins)
     
     def forward(self, src_0, src_1):
         """

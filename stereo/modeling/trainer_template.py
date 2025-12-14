@@ -6,6 +6,7 @@ import glob
 import torch
 import torch.nn as nn
 import torch.distributed as dist
+from PIL import Image
 
 from functools import partial
 from stereo.datasets import build_dataloader
@@ -27,10 +28,18 @@ class TrainerTemplate:
         self.tb_writer = tb_writer
         self.enable_profiler = True
 
+        self.logger.info('Building model...')
         self.model = self.build_model(model)
-
+        self.logger.info('Model built successfully.')
+        
         self.best_epe = 1e6
         self.eval_epes = {}
+
+        error_map_list = self.cfgs.TRAINER.get('SAVE_ERROR_MAP_LIST', None)
+        if error_map_list is not None:
+            print(f"Save error maps for: {error_map_list}")
+        else:
+            print(f"Did not find SAVE_ERROR_MAP_LIST in {self.cfgs}")  
 
         # --- Add this block to log model statistics ---
         if self.global_rank == 0:
@@ -248,8 +257,17 @@ class TrainerTemplate:
         loss_func = self.model.module.get_loss if self.args.dist_mode else self.model.get_loss
 
         print()
-        print(f"Training epoch: {current_epoch}")
-        print()
+        print(f"DefaultTrainer: Training epoch: {current_epoch}")
+        print()                  
+
+        # Set debug printer epoch and total samples
+        try:
+            from tools.debug_utils import debug_printer
+            debug_printer.set_type('train')
+            debug_printer.set_epoch(current_epoch)
+            debug_printer.set_total_samples(len(self.train_loader))
+        except ImportError:
+            pass  # Debug utils not available
 
         # profiler
         prof = None
@@ -258,10 +276,12 @@ class TrainerTemplate:
 
             prof = profile(
                 activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
-                schedule=schedule(wait=1, warmup=1, active=3, repeat=0),
-                on_trace_ready=tensorboard_trace_handler(os.path.join(self.args.output_dir, "profiler")),
-                record_shapes=True,
-                profile_memory=True,
+                schedule=schedule(wait=1, warmup=11, active=3, repeat=0),
+                on_trace_ready=tensorboard_trace_handler(os.path.join(self.args.output_dir, "profiler"), worker_name=f"{self.args.experiment_id}_{self.args.slurm_job_id}_train"),
+                record_shapes=False,
+                profile_memory=False,
+                # record_shapes=True,
+                # profile_memory=True,
                 with_stack=True
             )
             prof.__enter__()
@@ -270,6 +290,13 @@ class TrainerTemplate:
 
         train_loader_iter = iter(self.train_loader)
         for i in range(0, len(self.train_loader)):
+            # Update debug printer sample index
+            try:
+                from tools.debug_utils import debug_printer
+                debug_printer.set_sample(i) # this is actually batch number
+            except ImportError:
+                pass  # Debug utils not available
+                
             self.optimizer.zero_grad()
             lr = self.optimizer.param_groups[0]['lr']
 
@@ -288,6 +315,22 @@ class TrainerTemplate:
 
             # 不要在autocast下调用, calls backward() on scaled loss to create scaled gradients.
             self.scaler.scale(loss).backward()
+            # In your training loop, after loss.backward()
+            for name, param in self.model.named_parameters():
+                if param.grad is not None:
+                    grad_norm = param.grad.norm()
+                    if torch.isnan(grad_norm) or torch.isinf(grad_norm):
+                        print(f"NaN/Inf gradient in {name}")
+                        print(f"Param stats: min={param.min():.3f}, max={param.max():.3f}")
+                        
+            # Check BatchNorm running stats
+            for name, module in self.model.named_modules():
+                if isinstance(module, (nn.BatchNorm2d, nn.BatchNorm3d)):
+                    if hasattr(module, 'running_mean'):
+                        if torch.isnan(module.running_mean).any():
+                            print(f"NaN in BatchNorm running_mean: {name}")
+                        if torch.isinf(module.running_var).any():
+                            print(f"Inf in BatchNorm running_var: {name}")
             # 做梯度剪裁的时候需要先unscale, unscales the gradients of optimizer's assigned params in-place
             self.scaler.unscale_(self.optimizer)
             # 梯度剪裁
@@ -320,6 +363,10 @@ class TrainerTemplate:
                                     tbar.format_interval(trained_time_past_all),
                                     tbar.format_interval(remaining_second_all))
                 self.logger.info(message)
+                # if total_loss / (i + 1) == float('inf') or 
+                if torch.isnan(torch.tensor(total_loss / (i + 1))):
+                    self.logger.error("Loss is NaN. Stopping training.")
+                    raise ValueError("Loss is inf or NaN.")
 
             if self.cfgs.TRAINER.TRAIN_VISUALIZATION:
                 tb_info['image/train/image'] = torch.cat([data['left'][0], data['right'][0]], dim=1) / 256
@@ -335,7 +382,7 @@ class TrainerTemplate:
                 self.logger.info(message)
 
            
-                if i >= 5:  # Stop profiling after a few steps
+                if i >= 15:  # Stop profiling after a few steps
                     self.logger.info("Profiling finished.")
                     message = ('{:s}').format(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
                     self.logger.info(message)
@@ -360,7 +407,43 @@ class TrainerTemplate:
         for k in evaluator_cfgs.METRIC:
             epoch_metrics[k] = {'indexes': [], 'values': []}
 
+        # Set debug printer epoch and total samples
+        try:
+            from tools.debug_utils import debug_printer
+            debug_printer.set_type('eval')
+            debug_printer.set_epoch(current_epoch)
+            debug_printer.set_total_samples(len(self.eval_loader))
+        except ImportError:
+            pass  # Debug utils not available
+
+        # profiler
+        prof = None
+        if (self.enable_profiler and self.local_rank == 0 and current_epoch == 0) or current_epoch == -1:
+            from torch.profiler import profile, schedule, tensorboard_trace_handler, ProfilerActivity
+            # socket.gethostname()}_{os.getpid().pt.torch.json
+            print("Initializing profiler for evaluation...")
+            if current_epoch == -1:
+                filename = f"{self.args.experiment_id}_{self.args.slurm_job_id}_eval_before_train"
+            else:
+                filename = f"{self.args.experiment_id}_{self.args.slurm_job_id}_eval"
+            prof = profile(
+                activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
+                schedule=schedule(wait=1, warmup=11, active=3, repeat=0),
+                on_trace_ready=tensorboard_trace_handler(os.path.join(self.args.output_dir, "profiler"), worker_name=filename),
+                record_shapes=False,
+                profile_memory=False,
+                with_stack=True
+            )
+            prof.__enter__()
+
         for i, data in enumerate(self.eval_loader):
+            # Update debug printer sample index
+            try:
+                from tools.debug_utils import debug_printer
+                debug_printer.set_sample(i) # this is actually batch number
+            except ImportError:
+                pass  # Debug utils not available
+
             for k, v in data.items():
                 data[k] = v.to(local_rank) if torch.is_tensor(v) else v
 
@@ -393,7 +476,20 @@ class TrainerTemplate:
                         'image/eval/image': torch.cat([data['left'][0], data['right'][0]], dim=1) / 256,
                         'image/eval/disp': color_map_tensorboard(data['disp'][0], model_pred['disp_pred'].squeeze(1)[0])
                     }
-                    write_tensorboard(self.tb_writer, tb_info, current_epoch * len(self.eval_loader) + i)
+                    if current_epoch != -1:
+                        write_tensorboard(self.tb_writer, tb_info, current_epoch * len(self.eval_loader) + i)
+
+            if prof:
+                prof.step()
+                message = ('Evaluation Profiling Epoch:{:>2d} to file {:s} Iter:{:>4d}').format(
+                    current_epoch, os.path.join(self.args.output_dir, "profiler"), i)
+                self.logger.info(message)
+                if i >= 15:  # Stop profiling after a few steps
+                    self.logger.info("Evaluation Profiling finished.")
+                    message = ('{:s}').format(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
+                    self.logger.info(message)
+                    prof.__exit__(None, None, None)
+                    prof = None
 
         # gather from all gpus
         if self.args.dist_mode:
@@ -426,12 +522,14 @@ class TrainerTemplate:
             write_tensorboard(self.tb_writer, tb_info, current_epoch)
 
         self.logger.info(f"Epoch {current_epoch} metrics: {results}")
-        self.eval_epes[current_epoch] = results['epe'].item()
-        if results['epe'] < self.best_epe:
-            self.best_epe = results['epe']
-            self.logger.info(f"New best EPE: {self.best_epe:.4f} at epoch {current_epoch}")
-            # self.save_best_pth(current_epoch) # will do this in the main train
+        if current_epoch != -1:
+            self.eval_epes[current_epoch] = results['epe'].item()
+            if results['epe'] < self.best_epe:
+                self.best_epe = results['epe']
+                self.logger.info(f"New best EPE: {self.best_epe:.4f} at epoch {current_epoch}")
+                # self.save_best_pth(current_epoch) # will do this in the main train
         return results
+
 
 
     @torch.no_grad()
@@ -451,7 +549,40 @@ class TrainerTemplate:
         for k in testing_cfgs.METRIC:
             epoch_metrics[k] = {'indexes': [], 'values': []}
 
+        try:
+            from tools.debug_utils import debug_printer
+            debug_printer.set_type('test')
+            debug_printer.set_epoch(current_epoch)
+            debug_printer.set_total_samples(len(self.test_loader))
+        except ImportError:
+            pass  # Debug utils not available
+
+        # profiler
+        prof = None
+        if self.enable_profiler and self.local_rank == 0 and current_epoch == 0:
+            from torch.profiler import profile, schedule, tensorboard_trace_handler, ProfilerActivity
+
+            print("Initializing profiler for testing...")
+            
+            # socket.gethostname()}_{os.getpid().pt.torch.json
+            prof = profile(
+                activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
+                schedule=schedule(wait=1, warmup=11, active=3, repeat=0),
+                on_trace_ready=tensorboard_trace_handler(os.path.join(self.args.output_dir, "profiler"), worker_name=f"{self.args.experiment_id}_{self.args.slurm_job_id}_test"),
+                record_shapes=False,
+                profile_memory=False,
+                with_stack=True
+            )
+            prof.__enter__()
+
         for i, data in enumerate(self.test_loader):
+
+            try:
+                from tools.debug_utils import debug_printer
+                debug_printer.set_sample(i) # this is actually batch number
+            except ImportError:
+                pass  # Debug utils not available
+            
             for k, v in data.items():
                 data[k] = v.to(local_rank) if torch.is_tensor(v) else v
 
@@ -481,12 +612,48 @@ class TrainerTemplate:
 
             # check if it has the attribute TEST_VISUALIZATION
             if hasattr(self.cfgs.TRAINER, 'TEST_VISUALIZATION'):
-                if self.cfgs.TRAINER.TEST_VISUALIZATION and self.tb_writer is not None:
-                    tb_info = {
-                        'image/test/image': torch.cat([data['left'][0], data['right'][0]], dim=1) / 256,
-                        'image/test/disp': color_map_tensorboard(data['disp'][0], model_pred['disp_pred'].squeeze(1)[0])
-                    }
-                    write_tensorboard(self.tb_writer, tb_info, current_epoch * len(self.test_loader) + i)
+                if self.cfgs.TRAINER.TEST_VISUALIZATION:
+                    if self.tb_writer is not None:
+                        tb_info = {
+                            'image/test/image': torch.cat([data['left'][0], data['right'][0]], dim=1) / 256,
+                            'image/test/disp': color_map_tensorboard(data['disp'][0], model_pred['disp_pred'].squeeze(1)[0])
+                        }
+                        write_tensorboard(self.tb_writer, tb_info, current_epoch * len(self.test_loader) + i)
+
+                # print(f"{self.cfgs.SAVE_ERROR_MAP_FOR})
+                # if data['name'] in self.cfgs.TRAINER.SAVE_ERROR_MAP_LIST:
+ 
+                for idx, data_name in enumerate(data['name']):
+                    if data_name in self.cfgs.TRAINER.SAVE_ERROR_MAP_LIST:
+                        print(f"Saving error map for: {data_name}")
+                        error_map = color_map_tensorboard(data['disp'][idx], model_pred['disp_pred'].squeeze(1)[idx])
+                        save_directory = os.path.join(self.args.output_dir, 'test_error_maps')
+                        
+                        file_name = common_utils.get_filename_from_path(data_name)
+                        file_name = f"{self.args.experiment_id}-{file_name}"
+                        saving_loc = os.path.join(save_directory, file_name)
+                        saving_loc = f"{saving_loc}.png"
+                        os.makedirs(os.path.dirname(saving_loc), exist_ok=True)
+                        print(f"saving error map: {saving_loc}")
+
+                        im = Image.fromarray(error_map.mul(255).byte().cpu().numpy().transpose(1,2,0))
+                        im.save(saving_loc)
+                    else:
+                        print(f"Saving error map for {data_name} not requested.")
+                        # save_image(error_map, saving_loc)
+
+
+            if prof:
+                prof.step()
+                message = ('Profiling Testing Epoch:{:>2d} to file {:s} Iter:{:>4d}').format(
+                    current_epoch, os.path.join(self.args.output_dir, "profiler"), i)
+                self.logger.info(message)
+                if i >= 15:  # Stop profiling after a few steps
+                    self.logger.info("Evaluation Profiling finished.")
+                    message = ('{:s}').format(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
+                    self.logger.info(message)
+                    prof.__exit__(None, None, None)
+                    prof = None
 
         # gather from all gpus
         if self.args.dist_mode:

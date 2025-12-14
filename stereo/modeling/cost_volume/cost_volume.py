@@ -81,9 +81,10 @@ class SimpleCorrelationVolume_3D: # default
         self.group = group
 
     def calculate(self, left_feat, right_feat, max_disp):
-        return correlation_volume(left_feat, right_feat, max_disp)
+        # return self.correlation_volume(left_feat, right_feat, max_disp)
+        return self.correlation_volume_roll(left_feat, right_feat, max_disp)
 
-    def correlation_volume(left_feature, right_feature, max_disp):
+    def correlation_volume(self, left_feature, right_feature, max_disp):
         b, c, h, w = left_feature.size()
         cost_volume = left_feature.new_zeros(b, max_disp, h, w)
         for i in range(max_disp):
@@ -93,6 +94,51 @@ class SimpleCorrelationVolume_3D: # default
                 cost_volume[:, i, :, :] = (left_feature * right_feature).mean(dim=1)
         cost_volume = cost_volume.contiguous()
         return cost_volume # [b, max_disp, h, w]
+    
+    # removes indexing
+    def correlation_volume_vectorized(self, left_feature, right_feature, max_disp):
+        """
+        Vectorized cost volume:
+        left_feature, right_feature: [B, C, H, W]
+        Returns: [B, max_disp, H, W]
+        """
+        B, C, H, W = left_feature.shape
+        # Build all shifted right features with left padding (zero)
+        # right_shifted[d]: right shifted left by d (equivalent to original[:, :, :, :-d] aligned with left[:, :, :, d:])
+        shifted_list = []
+        for d in range(max_disp):
+            if d == 0:
+                shifted = right_feature
+            else:
+                # pad on right side to keep W, then remove last d columns to emulate shift
+                # Equivalent to left padding of d zeros
+                shifted = torch.pad(right_feature[..., :-d], (d, 0), mode='constant', value=0)
+            shifted_list.append(shifted)
+        # [B, C, H, W] -> stack -> [B, max_disp, C, H, W]
+        right_stack = torch.stack(shifted_list, dim=1)
+        # Expand left for broadcast: [B, 1, C, H, W] -> [B, max_disp, C, H, W]
+        left_exp = left_feature.unsqueeze(1).expand_as(right_stack)
+        prod = left_exp * right_stack  # [B, max_disp, C, H, W]
+        # Mask invalid columns (those padded)
+        if W >= max_disp:
+            cols = torch.arange(W, device=left_feature.device).view(1, 1, 1, 1, W)
+            disp = torch.arange(max_disp, device=left_feature.device).view(1, max_disp, 1, 1, 1)
+            valid = (cols >= disp)  # broadcast
+            prod = prod * valid  # zero out invalid region
+        cost = prod.mean(dim=2)  # channel mean -> [B, max_disp, H, W]
+        return cost.contiguous()
+
+    # alternative implementation using torch.roll (lower memory)
+    def correlation_volume_roll(self, left_feature, right_feature, max_disp):
+        B, C, H, W = left_feature.shape
+        disp_slices = []
+        cols = torch.arange(W, device=left_feature.device)
+        for d in range(max_disp):
+            shifted = torch.roll(right_feature, shifts=d, dims=-1)
+            prod = left_feature * shifted
+            valid_mask = (cols >= d).view(1, 1, W)
+            disp_slices.append((prod.mean(1) * valid_mask))  # [B,H,W]
+        return torch.stack(disp_slices, dim=1).contiguous() # actually returns [1, max_disp, batch, height, width]
 
 class SimpleCorrelationVolume_4D:
     def __init__(self,  group=1):
