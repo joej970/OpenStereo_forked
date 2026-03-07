@@ -10,13 +10,10 @@ MODEL:
     # FIND_UNUSED_PARAMETERS: false
     USE_CONCAT_VOLUME: false # # Concat_feature reduces number of feature channels to concat_feature_channel=12
     LOSS_TYPE: "LogL1Loss"  # "huber" or "smoothL1" or "l2" or "LogL1Loss" or "LogL1Loss_v2"
-
+    CONCAT_VOLUME_BUILDER_TYPE: 'clear'
 
     CKPT: -1
     PRETRAINED_MODEL: ''
-    BACKBONE_CFGS: 
-        CONCAT_LEFT_RIGHT: false # concatenates left and right images along batch before feeding to backbone
-        # CONCAT_LEFT_RIGHT_ALONG: batch # horizontal, vertical, multicut
     # BACKBONE: mobilenetv3_small_100
     # BACKBONE_PRETRAINED: True
     # COST_VOLUME_TYPE: SIMPLE_3D
