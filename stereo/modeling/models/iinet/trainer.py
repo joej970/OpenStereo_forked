@@ -131,7 +131,7 @@ class Trainer(TrainerTemplate):
                 model_pred = self.model(data)
                 infer_time = time.time() - infer_start
 
-            disp_pred = model_pred['disp_pred'] * 16
+            disp_pred = model_pred['disp_pred']
             disp_gt = data["disp"]
             mask = (disp_gt < evaluator_cfgs.MAX_DISP) & (disp_gt > 0)
             if 'occ_mask' in data and evaluator_cfgs.get('APPLY_OCC_MASK', False):
@@ -157,7 +157,7 @@ class Trainer(TrainerTemplate):
                     right = data['right'][0]*std + mean
                     tb_info = {
                         'image/eval/image': torch.cat([left, right], dim=1),
-                        'image/eval/disp': color_map_tensorboard(data['disp'][0], model_pred['disp_pred'].squeeze(1)[0]*16)
+                        'image/eval/disp': color_map_tensorboard(data['disp'][0], model_pred['disp_pred'].squeeze(1)[0])
                     }
                     write_tensorboard(self.tb_writer, tb_info, current_epoch * len(self.eval_loader) + i)
 

@@ -119,6 +119,9 @@ class IINet(nn.Module):
         depth_outputs["hypos"] = hypos
         depth_outputs["confidence"] = priority['cconf'][0][0:1]
 
+        if not self.training and not only_uncer:
+            depth_outputs["disp_pred"] = depth_outputs["disp_pred"]*self.run_opts.DISP_SCALE # if evaluation or test, scale up the disparity to the original scale (since the network outputs at a lower scale)
+
         return depth_outputs
 
     def get_loss(self, config, input, output):
