@@ -10,20 +10,22 @@ MODEL:
     FIND_UNUSED_PARAMETERS: false
     # CKPT: -1
     CKPT: 29
-    CKPT_DIR: '/d/hpc/home/zr1677/OpenStereo_forked/output/SceneFlowDataset/oneStereo/40b_one_stereo_s_sceneflow_lightstereo_MobNetV2_default/40b_exp_40b_half_64243075/ckpt/'
+    CKPT_DIR: '/d/hpc/home/zr1677/OpenStereo_forked/output/SceneFlowDataset/oneStereo/40e_one_stereo_s_sceneflow_lightstereo_MobNetV2_default/40e_exp_40e_half_64314346/ckpt/'
     
     PRETRAINED_MODEL: ''
     BACKBONE: MobileNetv2
     BACKBONE_PRETRAINED: True
     BACKBONE_CFGS: 
         CONCAT_LEFT_RIGHT: true # concatenates left and right images along batch before feeding to backbone
-        CONCAT_LEFT_RIGHT_ALONG: vertical # horizontal, vertical, multicut 
+        CONCAT_LEFT_RIGHT_ALONG: multicut # horizontal, vertical, multicut 
+        H_DIVISION: 2
+        W_DIVISION: 2
 
 OPTIMIZATION:
     FREEZE_BN: false
     SYNC_BN: true
     AMP: false
-    BATCH_SIZE_PER_GPU: &bs 24
+    BATCH_SIZE_PER_GPU: &bs 16
     NUM_EPOCHS: 90
     OPTI_REINIT: true # in case of loading from a checkpoint, reinitialize the optimizer to follow new opt. configs
 
@@ -60,7 +62,6 @@ OPTIMIZATION:
     SCHEDULER:
         NAME: OneCycleLR
         MAX_LR: *lr
-        # PCT_START: 0.01
         PCT_START: 0.15 # now we have only 30 epochs
         ON_EPOCH: False
 

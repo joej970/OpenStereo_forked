@@ -8,7 +8,10 @@ MODEL:
     AGGREGATION_BLOCKS: [1, 2, 4]
     LEFT_ATT: true
     FIND_UNUSED_PARAMETERS: false
-    CKPT: -1
+    # CKPT: -1
+    CKPT: 29
+    CKPT_DIR: '/d/hpc/home/zr1677/OpenStereo_forked/output/SceneFlowDataset/oneStereo/40c_one_stereo_s_sceneflow_lightstereo_MobNetV2_default/40c_exp_40c_half_64243076/ckpt/'
+    
     PRETRAINED_MODEL: ''
     BACKBONE: MobileNetv2
     BACKBONE_PRETRAINED: True
@@ -22,25 +25,44 @@ OPTIMIZATION:
     AMP: false
     BATCH_SIZE_PER_GPU: &bs 24
     NUM_EPOCHS: 90
+    OPTI_REINIT: true # in case of loading from a checkpoint, reinitialize the optimizer to follow new opt. configs
 
+    # OPTIMIZER:
+    #     NAME: AdamW
+    #     LR: &lr 0.0012
+    #     WEIGHT_DECAY: 1.0e-05
+    #     EPS: 1.0e-08
+
+    # SCHEDULER:
+    #     NAME: OneCycleLR
+    #     MAX_LR: *lr
+    #     PCT_START: 0.3
+    #     ON_EPOCH: False
+
+    # CLIP_GRAD:
+    #     TYPE: norm
+    #     CLIP_VALUE: 1.0
+    # # CLIP_GRAD:
+    # #     TYPE: value
+    # #     CLIP_VALUE: 0.1
+
+    CLIP_GRAD:
+        TYPE: value
+        CLIP_VALUE: 0.1
+
+        # original
     OPTIMIZER:
         NAME: AdamW
-        LR: &lr 0.0012
+        LR: &lr 0.0024
         WEIGHT_DECAY: 1.0e-05
         EPS: 1.0e-08
 
     SCHEDULER:
         NAME: OneCycleLR
         MAX_LR: *lr
-        PCT_START: 0.3
+        # PCT_START: 0.01
+        PCT_START: 0.15 # now we have only 30 epochs
         ON_EPOCH: False
-
-    CLIP_GRAD:
-        TYPE: norm
-        CLIP_VALUE: 1.0
-    # CLIP_GRAD:
-    #     TYPE: value
-    #     CLIP_VALUE: 0.1
 
     CLIP_GRAD:
         TYPE: value
