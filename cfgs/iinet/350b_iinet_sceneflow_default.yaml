@@ -1,0 +1,103 @@
+DATA_CONFIG:
+    DATA_INFOS:
+        -   DATASET: SceneFlowDataset
+            RETURN_POS: true
+
+MODEL:
+    NAME: IINet
+    MAX_DISP: &max_disp 192
+    MATCHING_FEATURE_DIMS : 16
+    CV_ENCODER_TYPE : multi_scale_encoder
+    MATCHING_SCALE : 2
+    MULTISCALE : 2
+    DEPTH_DECODER_NAME : unet_pp
+    OUT_SCALE : 4
+    FEATURE_VOLUME_TYPE : ms_cost_volume
+    DISP_SCALE : 16
+    DOT_DIM : 1
+    MATCHING_ENCODER_TYPE : unet
+
+    BACKBONE_CFGS: 
+        CONCAT_LEFT_RIGHT: true # concatenates left and right images along batch before feeding to backbone
+        CONCAT_LEFT_RIGHT_ALONG: horizontal # horizontal, vertical, multicut 
+
+    REGRESSION_TOPK: 2
+    FIND_UNUSED_PARAMETERS: true
+    # CKPT: -1
+
+    # CKPT: 29
+    # CKPT_DIR: '/d/hpc/home/zr1677/OpenStereo_forked/output/SceneFlowDataset/IINet/350b_iinet_sceneflow_default/350b_exp_350b_half_64505960/ckpt/'
+
+    CKPT: 59
+    CKPT_DIR: '/d/hpc/home/zr1677/OpenStereo_forked/output/SceneFlowDataset/IINet/350b_iinet_sceneflow_default/350b_exp_350b_half_64705046/ckpt/'
+
+    PRETRAINED_MODEL: ''
+    # PRETRAINED_MODEL: '/d/hpc/home/zr1677/OpenStereo_forked/output/SceneFlowDataset/IINet/350b_iinet_sceneflow_default/350b_exp_350b_half_64505960/ckpt/best_model.pth'
+
+OPTIMIZATION:
+    BATCH_SIZE_PER_GPU: &bs 16
+    FREEZE_BN: false
+    SYNC_BN: false
+    AMP: false
+    OPTI_REINIT: true # in case of loading from a checkpoint, reinitialize the optimizer to follow new opt. configs
+    
+    
+
+    OPTIMIZER:
+        NAME: AdamW
+        LR: 0.001
+        WEIGHT_DECAY: 0
+        EPS: 1.0e-6
+
+    SCHEDULER:
+        NAME: MultiStepLR
+        GAMMA: 0.5
+        MILESTONES: [ 7, 12, 15, 20, 30, 50, 70, 85, 95, 100 ]
+        ON_EPOCH: True
+
+EVALUATOR:
+    BATCH_SIZE_PER_GPU: 10
+    MAX_DISP: *max_disp
+    METRIC:
+        - d1_all
+        - epe
+        - thres_1
+        - thres_2
+        - thres_3
+
+TRAINER:
+    PRE_TRAIN: true
+
+    # EVAL_INTERVAL: 5
+    # CKPT_SAVE_INTERVAL: 1
+    # MAX_CKPT_SAVE_NUM: 30
+    # LOGGER_ITER_INTERVAL: 10
+    # TRAIN_VISUALIZATION: False
+    # EVAL_VISUALIZATION: True
+    
+    # UNCER_ONLY : True
+    UNCER_ONLY_EPOCHS : 13
+    LOSS_WEIGHT:
+        l1:
+            - 5
+            - 2.5
+            - 1.25
+            - 0.6
+        grad:
+            - 1.0
+            - 1.0
+            - 0.5
+            - 0.5
+        normal: 2.5
+        focal: 1.0
+
+
+TESTING:
+    BATCH_SIZE_PER_GPU: *bs
+    MAX_DISP: 192
+    METRIC:
+        - d1_all
+        - epe
+        - thres_1
+        - thres_2
+        - thres_3
