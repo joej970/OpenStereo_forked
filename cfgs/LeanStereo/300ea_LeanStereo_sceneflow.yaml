@@ -12,13 +12,15 @@ MODEL:
     LOSS_TYPE: "LogL1Loss"  # "huber" or "smoothL1" or "l2" or "LogL1Loss" or "LogL1Loss_v2"
 
 
-    # CKPT: -1
     CKPT: 39
-    CKPT_DIR: '/d/hpc/home/zr1677/OpenStereo_forked/output/SceneFlowDataset/LeanStereo/300a_LeanStereo_sceneflow/300a_exp_300a_half_64608131/ckpt/'
+    CKPT_DIR: '/d/hpc/home/zr1677/OpenStereo_forked/output/SceneFlowDataset/LeanStereo/300ea_LeanStereo_sceneflow/300ea_exp_300ea_half_64608136/ckpt/'
+
     PRETRAINED_MODEL: ''
     BACKBONE_CFGS: 
         CONCAT_LEFT_RIGHT: true # concatenates left and right images along batch before feeding to backbone
-        CONCAT_LEFT_RIGHT_ALONG: batch # horizontal, vertical, multicut 
+        CONCAT_LEFT_RIGHT_ALONG: multicut # horizontal, vertical, multicut
+        H_DIVISION: 1
+        W_DIVISION: 1 
     # BACKBONE: mobilenetv3_small_100
     # BACKBONE_PRETRAINED: True
     # COST_VOLUME_TYPE: SIMPLE_3D

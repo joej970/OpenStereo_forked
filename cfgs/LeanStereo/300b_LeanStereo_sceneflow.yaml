@@ -12,7 +12,9 @@ MODEL:
     LOSS_TYPE: "LogL1Loss"  # "huber" or "smoothL1" or "l2" or "LogL1Loss" or "LogL1Loss_v2"
 
 
-    CKPT: -1
+    # CKPT: -1
+    CKPT: 39
+    CKPT_DIR: '/d/hpc/home/zr1677/OpenStereo_forked/output/SceneFlowDataset/LeanStereo/300b_LeanStereo_sceneflow/300b_exp_300b_half_64608132/ckpt/'
     PRETRAINED_MODEL: ''
     BACKBONE_CFGS: 
         CONCAT_LEFT_RIGHT: true # concatenates left and right images along batch before feeding to backbone
@@ -30,9 +32,10 @@ MODEL:
 OPTIMIZATION:
     FREEZE_BN: false
     SYNC_BN: true
-    AMP: true
+    AMP: false
     BATCH_SIZE_PER_GPU: &bs 8
     NUM_EPOCHS: 90
+    OPTI_REINIT: true # in case of loading from a checkpoint, reinitialize the optimizer to follow new opt. configs
 
     OPTIMIZER:
         NAME: AdamW
