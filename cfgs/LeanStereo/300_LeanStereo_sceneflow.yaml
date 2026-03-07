@@ -11,9 +11,13 @@ MODEL:
     USE_CONCAT_VOLUME: false # # Concat_feature reduces number of feature channels to concat_feature_channel=12
     LOSS_TYPE: "LogL1Loss"  # "huber" or "smoothL1" or "l2" or "LogL1Loss" or "LogL1Loss_v2"
 
-
+# 
     CKPT: -1
     PRETRAINED_MODEL: ''
+
+    # CKPT: 39
+    # CKPT_DIR: '/d/hpc/home/zr1677/OpenStereo_forked/output/SceneFlowDataset/LeanStereo/300_LeanStereo_sceneflow/300_exp_300_half_64636001/ckpt/'
+
     # BACKBONE: mobilenetv3_small_100
     # BACKBONE_PRETRAINED: True
     # COST_VOLUME_TYPE: SIMPLE_3D
@@ -27,9 +31,30 @@ MODEL:
 OPTIMIZATION:
     FREEZE_BN: false
     SYNC_BN: true
-    AMP: true
+    AMP: false
+    # AMP_ENABLED_AFTER_EPOCH: 10
     BATCH_SIZE_PER_GPU: &bs 8
-    NUM_EPOCHS: 90
+    # our approach
+    # NUM_EPOCHS: 90
+
+    # original
+    NUM_EPOCHS: 320
+
+    # OPTIMIZER:
+    #     NAME: Adam
+    #     LR: &lr 0.0004
+    #     BETAS: [ 0.9, 0.999 ]
+
+    # SCHEDULER:
+    #     NAME: MultiStepLR
+    #     MAX_LR: *lr
+    #     GAMMA: 0.5
+    #     MILESTONES: [ 220, 240, 290, 310 ]
+    #     ON_EPOCH: False
+
+    # CLIP_GRAD:
+    #     TYPE: value
+    #     CLIP_VALUE: 0.1
 
     OPTIMIZER:
         NAME: AdamW
