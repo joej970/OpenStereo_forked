@@ -116,8 +116,6 @@ class oneStereo(torch.nn.Module):
 
         # Output the final disparity map
 
-        debug_printer.print_of_function(lambda: f"----------------------------------- Forward Pass -------------------")
-
         image1 = data['left'] # [24, 3, 544, 960], tensor contigous = yes type: <class 'torch.Tensor'>
         image2 = data['right']
 
@@ -126,15 +124,10 @@ class oneStereo(torch.nn.Module):
 
         # print(f"Input size: image1: {image1.size()}")
 
-        debug_printer.print_of_function(lambda : f"Input image1 stats: min={image1.min():.3f}, max={image1.max():.3f}, mean={image1.mean():.3f}, std={image1.std():.3f}")
+        # debug_printer.print_of_function(lambda : f"Input image1 stats: min={image1.min():.3f}, max={image1.max():.3f}, mean={image1.mean():.3f}, std={image1.std():.3f}")
     # Features left sizes: [torch.Size([24, 16, 80, 184]), torch.Size([24, 24, 40, 92]), torch.Size([24, 40, 20, 46]), torch.Size([24, 96, 10, 23])]
 
-        if self.backbone_conf.get('CONCAT_LEFT_RIGHT', False):
-            features_left, features_right = self.backbone(image1, image2) # [H/4, W/4 | H/8, W/8 | H/16, W/16 | H/32, W/32]
-        else:
-            features_left = self.backbone(image1) # [H/4, W/4 | H/8, W/8 | H/16, W/16 | H/32, W/32]
-            # for right we only need at H/4, W/4 but at for enc-dec we have to calculate all anyways 
-            features_right = self.backbone(image2) 
+        features_left, features_right = self.backbone(image1, image2) 
 
         # print(f"Features left sizes: {[f.size() for f in features_left]}")
 
@@ -162,12 +155,12 @@ class oneStereo(torch.nn.Module):
         if self.training:
             debug_printer.print_of_function_force_print(lambda : f"Cost aggregation: encoding_volume[0] Found NaN!", force_print=encoding_volume[0].isfinite().all()==False)
 
-        debug_printer.print_of_function(lambda : f"stereo: encoding_volume[0] stats: min={encoding_volume[0].min():.3f}, max={encoding_volume[0].max():.3f}, mean={encoding_volume[0].mean():.3f}, std={encoding_volume[0].std():.3f}")
+        # debug_printer.print_of_function(lambda : f"stereo: encoding_volume[0] stats: min={encoding_volume[0].min():.3f}, max={encoding_volume[0].max():.3f}, mean={encoding_volume[0].mean():.3f}, std={encoding_volume[0].std():.3f}")
 
         if self.additional_depth_src:
             depth_source = data["depth_src_0"]  # [bz, h, w]
 
-            debug_printer.print_of_function(lambda : f"depth src: depth_source stats: min={depth_source.min():.3f}, max={depth_source.max():.3f}, mean={depth_source.mean():.3f}, std={depth_source.std():.3f}")
+            # debug_printer.print_of_function(lambda : f"depth src: depth_source stats: min={depth_source.min():.3f}, max={depth_source.max():.3f}, mean={depth_source.mean():.3f}, std={depth_source.std():.3f}")
            
             depth_source = depth_source.unsqueeze(1)  # [bz, 1, h, w]
 
@@ -179,7 +172,7 @@ class oneStereo(torch.nn.Module):
             # debug_printer.print(f"Before fusion - encoding_volume[0] stats: min={encoding_volume[0].min():.3f}, max={encoding_volume[0].max():.3f}, mean={encoding_volume[0].mean():.3f}, std={encoding_volume[0].std():.3f}")
             # debug_printer.print(f"Before fusion - depth_aggregated[0] stats: min={depth_aggregated[0].min():.3f}, max={depth_aggregated[0].max():.3f}, mean={depth_aggregated[0].mean():.3f}, std={depth_aggregated[0].std():.3f}")
 
-            debug_printer.print_of_function(lambda : f"depth src: depth_aggregated[0] stats: min={depth_aggregated[0].min():.3f}, max={depth_aggregated[0].max():.3f}, mean={depth_aggregated[0].mean():.3f}, std={depth_aggregated[0].std():.3f}")
+            # debug_printer.print_of_function(lambda : f"depth src: depth_aggregated[0] stats: min={depth_aggregated[0].min():.3f}, max={depth_aggregated[0].max():.3f}, mean={depth_aggregated[0].mean():.3f}, std={depth_aggregated[0].std():.3f}")
 
             # option 1
             if self.zero_initialised_conv is not None:
@@ -188,14 +181,14 @@ class oneStereo(torch.nn.Module):
             # option 2
             if self.gated_branch is not None:
                 depth_aggregated[0] = self.gated_branch(depth_aggregated[0])
-                debug_printer.print_of_function(lambda : f"Gated fusion: alpha: {self.gated_branch.get_alpha():.4f}")
+                # debug_printer.print_of_function(lambda : f"Gated fusion: alpha: {self.gated_branch.get_alpha():.4f}")
 
             encoding_volume = self.fusion(encoding_volume[0], depth_aggregated[0])
             # encoding_volume = self.fusion(encoding_volume_norm, depth_aggregated_norm)
 
             # print(f"After fusion - encoding_volume stats: min={encoding_volume[0].min():.3f}, max={encoding_volume[0].max():.3f}, mean={encoding_volume[0].mean():.3f}, std = {encoding_volume[0].std():.3f}")
 
-            debug_printer.print_of_function(lambda : f"After fusion - encoding_volume stats: min={encoding_volume[0].min():.3f}, max={encoding_volume[0].max():.3f}, mean={encoding_volume[0].mean():.3f}, std = {encoding_volume[0].std():.3f}")
+            # debug_printer.print_of_function(lambda : f"After fusion - encoding_volume stats: min={encoding_volume[0].min():.3f}, max={encoding_volume[0].max():.3f}, mean={encoding_volume[0].mean():.3f}, std = {encoding_volume[0].std():.3f}")
 
         squeezed_encoding = encoding_volume[0].reshape(encoding_volume[0].size(0), -1, encoding_volume[0].size(2), encoding_volume[0].size(3))  # [bz, max_disp/4, H/4, W/4]
 
@@ -204,7 +197,7 @@ class oneStereo(torch.nn.Module):
         prob = F.softmax(squeezed_encoding, dim=1)
         init_disp = disparity_regression(prob, self.max_disp // 4)  # [bz, 1, H/4, W/4]
 
-        debug_printer.print_of_function(lambda : f"Initial disparity (disparity_regression) stats: min={init_disp.min():.3f}, max={init_disp.max():.3f}, mean={init_disp.mean():.3f}, std={init_disp.std():.3f}")
+        # debug_printer.print_of_function(lambda : f"Initial disparity (disparity_regression) stats: min={init_disp.min():.3f}, max={init_disp.max():.3f}, mean={init_disp.mean():.3f}, std={init_disp.std():.3f}")
 
         xspx = self.refine_1(features_left[0])
         try:
@@ -222,7 +215,7 @@ class oneStereo(torch.nn.Module):
         if self.training:
             debug_printer.print_of_function_force_print(lambda : f"Refined disparity (context_upsample) Found NaN!", force_print = disp_pred.isfinite().all() == False)
 
-        debug_printer.print_of_function(lambda : f"spx_pred stats: min={spx_pred.min():.3f}, max={spx_pred.max():.3f}, mean={spx_pred.mean():.3f}, std={spx_pred.std():.3f}")
+        # debug_printer.print_of_function(lambda : f"spx_pred stats: min={spx_pred.min():.3f}, max={spx_pred.max():.3f}, mean={spx_pred.mean():.3f}, std={spx_pred.std():.3f}")
 
         result = {'disp_pred': disp_pred}
 
@@ -284,15 +277,21 @@ class oneStereo(torch.nn.Module):
             print(f"Input left contains NaN: {torch.isnan(input_data['left']).any()}", end="")
             print(f"Input rigth contains NaN: {torch.isnan(input_data['right']).any()}", end="")
             print(f"Target contains NaN: {torch.isnan(input_data['disp']).any()}")
+            raise ValueError("NaN loss detected (loss_1)")
 
         if torch.isnan(loss_2):
             print(f"NaN loss detected at batch {input_data['iteration']} (loss_2)", end="")
             print(f"Input left contains NaN: {torch.isnan(input_data['left']).any()}", end="")
             print(f"Input rigth contains NaN: {torch.isnan(input_data['right']).any()}", end="")
             print(f"Target contains NaN: {torch.isnan(input_data['disp']).any()}")
+            raise ValueError("NaN loss detected (loss_2)")
         
 
         loss_info = {'scalar/train/loss_disp': loss.item()}
+
+        if loss > 1000:
+            debug_printer.print_of_function_force_print(lambda: f"Large loss detected at batch {input_data['iteration']}: {loss.item()}", force_print=True)
+            raise ValueError(f"Abnormally large loss: {loss.item()}")
 
         return loss, loss_info
 

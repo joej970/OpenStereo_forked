@@ -367,8 +367,10 @@ class Backbone(nn.Module):
         self.impl = build_backbone(backbone, cfgs=cfgs, pretrained=pretrained, checkpoint_path=checkpoint_path)
         self.output_channels = getattr(self.impl, 'output_channels', None)
 
-        self.forward = self.forward_single_image
+        # by default, do two separate passes (traditional way)
+        self.forward = self.forward_left_right_one_by_one
 
+        # check if batching requested (new proposal)
         if (cfgs is not None):
             should_concat = cfgs.get('CONCAT_LEFT_RIGHT', False) # if not supplied, then assume False
             if should_concat:
@@ -384,12 +386,25 @@ class Backbone(nn.Module):
                     self.forward = self.forward_left_right_images_vertical
                 elif concat_type == 'multicut':
                     self.forward = self.forward_left_right_images_multicut
+                    self.h_division = cfgs.get('H_DIVISION', 1)
+                    self.w_division = cfgs.get('W_DIVISION', 2)
+                    # if self.h_division is None or self.w_division is None:
+                    #     raise ValueError(f"MODEL.BACKBONE_CFGS.H_DIV and W_DIV must be specified for multicut concatenation.")
+                    print(f"Multicut concat: H_DIVISION={self.h_division}, W_DIVISION={self.w_division}")
                 else:
                     raise NotImplementedError(f"Concat type '{concat_type}' is not implemented. Available: batch, horizontal, vertical, multicut")
 
-    def forward_single_image(self, image):
-        # pass through backbone
-        return self.impl(image)
+    # def forward_single_image(self, image):
+    #     # pass through backbone
+    #     return self.impl(image)
+    
+    def forward_left_right_one_by_one(self, image_left, image_right):
+        # first left
+        features_left = self.impl(image_left)
+        # then right
+        features_right = self.impl(image_right)
+        # return together
+        return features_left, features_right
     
     # dimensions: batch, channels, height, width
     def forward_left_right_images_along_batch(self, image_left, image_right):
@@ -448,8 +463,9 @@ class Backbone(nn.Module):
         # cut each image into 4 parts vertically and 2 parts horizontally -> 8 parts
         image_left_parts = []
         image_right_parts = []
-        w_division = 2
-        h_division = 1 # after division, the new height and width need to be divisible by 32 (depending on the backbone)
+        w_division = self.w_division
+        h_division = self.h_division
+        # after division, the new height and width need to be divisible by 32 (depending on the backbone)
 
         # w_division = 4
         # h_division = 2
@@ -476,7 +492,7 @@ class Backbone(nn.Module):
         # print(f"image_right_parts.size: {right_stack.size()}")
 
         # concatenate all parts along batch dimension
-        combined = torch.cat((left_stack, right_stack), dim=0) # here combined has batch size of 2*b*2*nr_of_parts
+        combined = torch.cat((left_stack, right_stack), dim=0)
 
         # [b*2*8, 3, h/4, w/2], tensor contigous = 
         # print(f"combined.size: {combined.size()}. is contiguous: {combined.is_contiguous()}. type: {type(combined)}")
@@ -534,8 +550,8 @@ class Backbone(nn.Module):
                         # [1, c, h/(4*1), w/(4*2)]
                         # print(f"temp size: {temp.size()}") # torch.Size([160, 17, 15])
 
-                        left_h_sequence.append(combined_features_left[bi*nr_of_parts + i*h_division + j, ...]) # append to horizontal sequence
-                        right_h_sequence.append(combined_features_right[bi*nr_of_parts + i*h_division + j, ...])
+                        left_h_sequence.append(combined_features_left[i*b*w_division + j*b + bi, ...]) # append to horizontal sequence
+                        right_h_sequence.append(combined_features_right[i*b*w_division + j*b + bi, ...])
 
                         # left_feat_image[bi, :, i*h_divided:(i+1)*h_divided, j*w_divided:(j+1)*w_divided] = combined_features_left[bi*nr_of_parts + i*w_division + j, ...]
                         # right_feat_image[bi, :, i*h_divided:(i+1)*h_divided, j*w_divided:(j+1)*w_divided] = combined_features_right[bi*nr_of_parts + i*w_division + j, ...]
