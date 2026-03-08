@@ -183,12 +183,59 @@ def load_params_from_file(model, filename, device, dist_mode, logger, strict=Tru
     else:
         print(message)
 
+# return a 1D tensor (array) of line indices that are all zero
+def find_all_zero_lines(tensor):
+    # tensor: [h, w]
+    zero_mask = (tensor == 0)
+    zero_lines = np.all(zero_mask, axis=-1)
+    zero_lines_indices = np.nonzero(zero_lines)[0]
+    # print(f"Found {len(zero_lines_indices)} all-zero lines. Indices: {zero_lines_indices}")
+    return zero_lines_indices
+
+# returns a 1D tensor (array) of line indices that have at least one non-zero element
+def find_nonzero_lines(tensor):
+    # tensor: [h, w]
+    nonzero_mask = (tensor != 0)
+    nonzero_lines = torch.any(nonzero_mask, axis=-1)
+    nonzero_lines = torch.nonzero(nonzero_lines)[0]
+    # print(f"Found {len(nonzero_lines)} non-zero lines. Indices: {nonzero_lines}")
+    return nonzero_lines
+
+# Given a 1D tensor of line indices, return a new tensor that only includes the longest sequence of consecutive line indices starting from the first index. For example, if the input is [0, 1, 2, 4, 5], the output should be [0, 1, 2] because the sequence breaks at index 3. 
+def keep_continous_lines(line_indices):
+    for l in range(len(line_indices)-1):
+        if line_indices[l+1] - line_indices[l] > 1:
+            return line_indices[:l+1]
+    return line_indices
+
+def get_last_all_zero_line(line_indices):
+    if len(line_indices) == 0:
+        return None
+    return line_indices[-1]
+
+def get_first_nonzero_line(tensor):
+    zero_lines = find_all_zero_lines(tensor)
+    zero_lines = keep_continous_lines(zero_lines)
+    last_zero_line = get_last_all_zero_line(zero_lines)
+    first_nonzero_line = last_zero_line + 1 if last_zero_line is not None else 0
+    # print(f"First nonzero line index: {first_nonzero_line}")
+    return first_nonzero_line
+
+def trim_tensor_by_line_indices(tensor, first_nonzero_line):
+    # print(f"Trimming tensor by line indices. Keeping img from First nonzero line onward: {first_nonzero_line}")
+    return tensor[..., first_nonzero_line:, :]
+
 
 def color_map_tensorboard(disp_gt, pred, disp_max=192):
     cm = plt.get_cmap('plasma')
 
     disp_gt = disp_gt.detach().data.cpu().numpy()
     pred = pred.detach().data.cpu().numpy()
+
+    first_nonzero_line = get_first_nonzero_line(disp_gt)
+    disp_gt = trim_tensor_by_line_indices(disp_gt, first_nonzero_line)
+    pred = trim_tensor_by_line_indices(pred, first_nonzero_line)
+
     error_map = np.abs(pred - disp_gt)
 
     disp_gt = np.clip(disp_gt, a_min=0, a_max=disp_max)
@@ -282,7 +329,7 @@ def get_filename_from_path(full_path: str) -> str:
     idx = norm.lower().find('datasets')
     if idx != -1: # if 'datasets' found
         idx = idx + len('datasets/')  # move index to the end of 'datasets'
-    sub = norm[idx+1:] if idx != -1 else norm # skip 'datasets/' part
+    sub = norm[idx:] if idx != -1 else norm # skip 'datasets/' part
     sub = sub.strip('/')               # remove any leading/trailing slashes
     # remove extension of the final path component
     sub = str(Path(sub).with_suffix(''))
@@ -318,3 +365,123 @@ def save_tensor_as_png(tensor: torch.Tensor, path: str, png_compression: int = 3
 
     os.makedirs(os.path.dirname(path), exist_ok=True)
     cv2.imwrite(path, img, [cv2.IMWRITE_PNG_COMPRESSION, int(png_compression)])
+
+def get_n_max_values(input_tensor: torch.Tensor, n: int, valid_mask: torch.Tensor = None) -> torch.Tensor:
+    """
+    Extracts the n maximum values from an input tensor of any shape.
+    
+    Args:
+        input_tensor (torch.Tensor): The input tensor of any shape.
+        n (int): The number of maximum values to extract.
+        valid_mask (torch.Tensor, optional): A boolean mask of the same shape as input_tensor.
+                                             True indicates a valid value. Defaults to None.
+
+    Returns:
+        torch.Tensor: A 1D tensor containing the top n values sorted descending.
+                      If fewer than n valid values exist, returns all of them.
+    """
+    # 1. Flatten the input to treat it as a single pool of numbers
+    flat_input = input_tensor.detach().flatten()
+    
+    if valid_mask is not None:
+        flat_mask = valid_mask.detach().flatten().bool()
+        # 2. Filter: Keep only the elements where mask is True
+        valid_values = flat_input[flat_mask]
+    else:
+        valid_values = flat_input
+        
+    # 3. Safety check: ensure we don't ask for more values than exist
+    k = min(n, valid_values.numel())
+    
+    if k == 0:
+        return torch.tensor([], device=input_tensor.device, dtype=input_tensor.dtype)
+        
+    sorting_values = valid_values.clone()
+    nan_mask = torch.isnan(sorting_values)
+    if nan_mask.any():
+        sorting_values[nan_mask] = 969696.0 #
+
+    # 4. Find the top k values
+    # torch.topk is generally faster than sorting for small k
+    values, _ = torch.topk(valid_values, k, sorted=True)
+    
+    return values
+
+def check_max_vals(x, name : str = 'unknown', n_max_vals : int = 5):
+    max_vals = get_n_max_values(x, n_max_vals)
+    text = f"Max values of {name}: {max_vals}"
+    return text
+
+
+def draw_train_loss_lr(output_dir, job_id, experiment_id, train_epochs, 
+               train_losses = None, train_lrs = None, eval_epochs = None, eval_epes = None):
+
+    if not isinstance(output_dir, str):
+        output_dir = str(output_dir)
+
+    # Plot 1: Training Loss and Learning Rate
+    fig, ax1 = plt.subplots(figsize=(12, 6), layout='constrained')
+    
+    # Loss on right axis
+    ax2 = ax1.twinx()
+    color = 'tab:red'
+    ax2.set_xlabel('Epoch')
+    ax2.set_ylabel('Average Loss', color=color)
+    ax2.plot(train_epochs, train_losses, color=color, marker='o', label='Training Loss')
+    ax2.tick_params(axis='y', labelcolor=color)
+    ax2.grid(True, alpha=0.3)
+    
+    # Set y-axis limit for loss to 1.5 times the second epoch value (epoch 1)
+    if len(train_losses) > 1 and not np.isnan(train_losses[1]) and train_losses[1] > 0:
+        max_loss_display = 1.5 * train_losses[1]
+        lim_down = np.nanmin(train_losses) * 0.8 if train_losses else 0.0
+        ax2.set_ylim(bottom=lim_down, top=max_loss_display)
+    
+    # Evaluation epe on right axis (if available)
+    if eval_epochs and eval_epes:
+        ax3 = ax1.twinx()
+        color = 'tab:orange'
+        ax3.set_ylabel('EPE', color=color)
+        ax3.plot(eval_epochs, eval_epes, color=color, marker='^', label='Evaluation EPE')
+        ax3.tick_params(axis='y', labelcolor=color)
+        lim_up = np.nanmax(eval_epes) * 1.5
+        lim_down = np.nanmin(eval_epes) * 0.8
+        ax3.set_ylim(bottom=lim_down, top=lim_up)
+    # else:
+    #     print(f"No evaluation EPE data provided, skipping EPE plot on training progress graph. eval_epochs: {eval_epochs}, eval_epes: {eval_epes}")
+
+    # Learning rate on left axis
+    color = 'tab:blue'
+    ax1.set_ylabel('Learning Rate', color=color)
+    ax1.plot(train_epochs, train_lrs, color=color, marker='s', label='Learning Rate')
+    ax1.tick_params(axis='y', labelcolor=color)
+    ax1.set_yscale('log')  # Log scale for LR
+    
+    plt.title(f'Training Progress: Loss and Learning Rate (Job {job_id}, Exp {experiment_id})')
+    plt.tight_layout()
+    plt.savefig(output_dir + f'/{job_id}_{experiment_id}_training_progress.png', dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    print(f"Plots saved to {output_dir}")
+    print(f"  - {job_id}_{experiment_id}_training_progress.png")
+
+
+
+def draw_eval_epe(output_dir, job_id, experiment_id, eval_epochs = None, eval_epes = None
+               ):
+    
+    if not isinstance(output_dir, str):
+        output_dir = str(output_dir)
+
+    # Plot 2: Evaluation EPE
+    plt.figure(figsize=(10, 6))
+    plt.plot(eval_epochs, eval_epes, color='tab:green', marker='o', linewidth=2)
+    plt.xlabel('Epoch')
+    plt.ylabel('EPE (End Point Error)')
+    plt.title(f'Evaluation EPE Over Training (Job {job_id}, Exp {experiment_id})')
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(output_dir + f'/{job_id}_{experiment_id}_evaluation_epe.png', dpi=300, bbox_inches='tight')
+    plt.close()
+    print(f"  - {job_id}_{experiment_id}_evaluation_epe.png")
+

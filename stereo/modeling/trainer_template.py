@@ -35,13 +35,19 @@ class TrainerTemplate:
         self.best_epe = 1e6
         self.eval_epes = {}
 
+        self.train_losses = {}
+        self.train_lrs = {}
+
+        self.last_train_epoch_idx = None
+        self.last_train_loss = None
+
         error_map_list = self.cfgs.TRAINER.get('SAVE_ERROR_MAP_LIST', None)
         if error_map_list is not None:
             print(f"Save error maps for: {error_map_list}")
         else:
             print(f"Did not find SAVE_ERROR_MAP_LIST in {self.cfgs}")  
 
-        # --- Add this block to log model statistics ---
+        # --- Add this block t
         if self.global_rank == 0:
             num_params = sum(p.numel() for p in self.model.parameters())
             num_trainable = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
@@ -62,18 +68,33 @@ class TrainerTemplate:
         if self.args.run_mode == 'train':
             self.train_set, self.train_loader, self.train_sampler = self.build_train_loader()
 
-            self.total_epochs = cfgs.OPTIMIZATION.NUM_EPOCHS
-            self.last_epoch = -1
+            if not hasattr(self, 'total_epochs'):
+                self.total_epochs = cfgs.OPTIMIZATION.NUM_EPOCHS # set in child class
+
+            if not hasattr(self, 'last_epoch'): # set in build_model if pretrained model is used
+                self.last_epoch = -1
 
             self.optimizer, self.scheduler = self.build_optimizer_and_scheduler()
             # self.scaler = torch.cuda.amp.GradScaler(enabled=cfgs.OPTIMIZATION.AMP)
-            self.scaler = torch.amp.GradScaler('cuda:%d' % self.local_rank, enabled=cfgs.OPTIMIZATION.AMP)
+            self.scaler = torch.amp.GradScaler('cuda:%d' % self.local_rank, enabled=cfgs.OPTIMIZATION.AMP or cfgs.OPTIMIZATION.get('AMP_ENABLED_AFTER_EPOCH', None) is not None)
 
             if self.cfgs.MODEL.CKPT > -1:
                 self.resume_ckpt()
 
             self.warmup_scheduler = self.build_warmup()
             self.clip_gard = self.build_clip_grad()
+
+    def custom_after_train_callback(self):
+        if self.last_train_loss is not None:
+            print(f"After Epoch {self.last_train_epoch_idx}: Last Train Loss = {self.last_train_loss}")
+            if torch.isnan(torch.tensor(self.last_train_loss)):
+                raise ValueError("Last training loss is NaN after epoch callback.")
+            elif torch.isinf(torch.tensor(self.last_train_loss)):
+                raise ValueError("Last training loss is Inf after epoch callback.")
+            elif self.last_train_loss > 1e3:
+                raise ValueError("Last training loss is too large after epoch callback.")
+
+           
 
     def build_train_loader(self):
         train_set, train_loader, train_sampler = build_dataloader(
@@ -126,12 +147,73 @@ class TrainerTemplate:
         # load pretrained model
         if self.cfgs.MODEL.PRETRAINED_MODEL:
             self.logger.info('Loading parameters from checkpoint %s' % self.cfgs.MODEL.PRETRAINED_MODEL)
+
+            # import re
+            # numbers = re.findall(r'\d+', self.cfgs.MODEL.PRETRAINED_MODEL)
+            # if numbers:
+            #     epoch_num = numbers[-1]
+            #     self.logger.info(f"Loading pretrained model from epoch {epoch_num}")
+
+            # self.last_epoch = int(epoch_num) if numbers else -1
+
+            # try:
+            #     self.resume_ckpt_from_filename(self.cfgs.MODEL.PRETRAINED_MODEL)
+            #     self.adjust_learning_rate_from_pretrained()
+            # except Exception as e:
+            # self.logger.info(f"Supplied pretrained model {self.cfgs.MODEL.PRETRAINED_MODEL} not containing all training states, will try to load model weights only. Got exception: {e}\n Continuing to load model weights only...")
+
             if not os.path.isfile(self.cfgs.MODEL.PRETRAINED_MODEL):
                 raise FileNotFoundError
             common_utils.load_params_from_file(
                 model, self.cfgs.MODEL.PRETRAINED_MODEL, device='cuda:%d' % self.local_rank,
                 dist_mode=self.args.dist_mode, logger=self.logger, strict=False)
         return model
+
+    def adjust_learning_rate_from_pretrained(self):
+        """
+        Adjust learning rate when loading from a pretrained model (not a full resume).
+        This ensures the scheduler is in sync with the pretrained weight's epoch.
+        """
+        if self.last_epoch > -1:
+            self.logger.info(f"Adjusting scheduler for pretrained model: last_epoch={self.last_epoch}")
+            
+            # If scheduler steps on epoch (like MultiStepLR in your config)
+            if self.cfgs.OPTIMIZATION.SCHEDULER.ON_EPOCH:
+                 # Scheduler starts at -1. We need to step it (last_epoch + 1) times to reach state AFTER last_epoch.
+                 # e.g., if last_epoch=14 (finished ep 14), we want state ready for start of ep 15.
+                steps_to_take = self.last_epoch + 1
+                self.logger.info(f"Fast-forwarding scheduler {steps_to_take} steps (Epochs).")
+                for _ in range(steps_to_take):
+                    self.scheduler.step()
+            else:
+                # If scheduler steps on iteration
+                if hasattr(self, 'train_loader'):
+                    steps_to_take = (self.last_epoch + 1) * len(self.train_loader)
+                    self.logger.info(f"Fast-forwarding scheduler {steps_to_take} steps (Iterations).")
+                    for _ in range(steps_to_take):
+                        self.scheduler.step()
+                else:
+                    raise ValueError("Cannot adjust learning rate from pretrained model because train_loader is not defined.")
+            
+            current_lr = self.optimizer.param_groups[0]['lr']
+            self.logger.info(f"Scheduler state adjusted. Current Learning Rate: {current_lr}")
+
+
+    def resume_ckpt_from_filename(self, ckpt_path):
+        self.logger.info('Resume from ckpt: %s' % ckpt_path)
+        print('Resume from ckpt: %s' % ckpt_path)
+
+        checkpoint = torch.load(ckpt_path, map_location='cuda:%d' % self.local_rank)
+        self.last_epoch = checkpoint['epoch']
+        self.logger.info(f"Loaded checkpoint epoch: {self.last_epoch}")
+        print(f"Loaded checkpoint epoch: {self.last_epoch}")
+        self.scheduler.load_state_dict(checkpoint['scheduler_state'])
+        self.optimizer.load_state_dict(checkpoint['optimizer_state'])
+        self.scaler.load_state_dict(checkpoint['scaler_state'])
+        if self.args.dist_mode:
+            self.model.module.load_state_dict(checkpoint['model_state'])
+        else:
+            self.model.load_state_dict(checkpoint['model_state'])
 
     def build_optimizer_and_scheduler(self):
         if self.cfgs.OPTIMIZATION.OPTIMIZER.NAME == 'Lamb':
@@ -149,8 +231,13 @@ class TrainerTemplate:
         return optimizer, scheduler
 
     def resume_ckpt(self):
-        self.logger.info('Resume from ckpt:%d' % self.cfgs.MODEL.CKPT)
-        ckpt_path = str(os.path.join(self.args.ckpt_dir, 'checkpoint_epoch_%d.pth' % self.cfgs.MODEL.CKPT))
+        if self.cfgs.MODEL.get('CKPT_DIR', None) is not None:
+            dir = self.cfgs.MODEL.CKPT_DIR
+        else:
+            dir = self.args.ckpt_dir
+
+        ckpt_path = str(os.path.join(dir, 'checkpoint_epoch_%d.pth' % self.cfgs.MODEL.CKPT))
+        self.logger.info('Resume from ckpt file: %s' % ckpt_path)
         checkpoint = torch.load(ckpt_path, map_location='cuda:%d' % self.local_rank)
         self.last_epoch = checkpoint['epoch']
         self.scheduler.load_state_dict(checkpoint['scheduler_state'])
@@ -160,6 +247,26 @@ class TrainerTemplate:
             self.model.module.load_state_dict(checkpoint['model_state'])
         else:
             self.model.load_state_dict(checkpoint['model_state'])
+
+        if self.cfgs.OPTIMIZATION.get('OPTI_REINIT', False):
+            self.logger.info("Reinitializing optimizer and scheduler after loading pretrained model.")
+            self.reinitialize_optimizer_and_scheduler(self.last_epoch)
+
+    def reinitialize_optimizer_and_scheduler(self, last_epoch):
+        self.optimizer, self.scheduler = self.build_optimizer_and_scheduler()
+        self.warmup_scheduler = self.build_warmup()
+
+        # fast forward scheduler to current epoch if resuming from pretrained model
+        if self.cfgs.OPTIMIZATION.SCHEDULER.ON_EPOCH:
+            steps_to_take = last_epoch + 1
+            self.logger.info(f"Fast-forwarding scheduler {steps_to_take} steps (Epochs).")
+            for _ in range(steps_to_take):
+                self.scheduler.step()
+        else:
+            steps_to_take = (last_epoch + 1) * len(self.train_loader)
+            self.logger.info(f"Fast-forwarding scheduler {steps_to_take} steps (Iterations).")
+            for _ in range(steps_to_take):
+                self.scheduler.step()
 
     def build_warmup(self):
         last_step = (self.last_epoch + 1) * len(self.train_loader) - 1
@@ -194,7 +301,18 @@ class TrainerTemplate:
         if self.args.dist_mode:
             self.train_sampler.set_epoch(current_epoch)
             print(f"Rank {self.local_rank} set epoch to {current_epoch} for distributed training.")
+
         self.train_one_epoch(current_epoch=current_epoch, tbar=tbar)
+
+        if self.cfgs.OPTIMIZATION.AMP == False:
+            if self.cfgs.OPTIMIZATION.get('AMP_ENABLED_AFTER_EPOCH', None) is not None:
+                if current_epoch+1 >= self.cfgs.OPTIMIZATION.AMP_ENABLED_AFTER_EPOCH:
+                    self.logger.info(f"Enabling AMP after epoch {current_epoch}.")
+                    self.cfgs.OPTIMIZATION.AMP = True
+                    # self.scaler = torch.amp.GradScaler('cuda:%d' % self.local_rank, enabled=self.cfgs.OPTIMIZATION.AMP)
+            # else:
+                # self.logger.info("AMP is disabled for the entire training.")
+
         if self.args.dist_mode:
             dist.barrier()
         if self.cfgs.OPTIMIZATION.SCHEDULER.ON_EPOCH:
@@ -388,6 +506,15 @@ class TrainerTemplate:
                     self.logger.info(message)
                     prof.__exit__(None, None, None)
                     prof = None
+
+        self.train_losses[current_epoch] = total_loss / len(self.train_loader)
+        self.train_lrs[current_epoch] = self.optimizer.param_groups[0]['lr']
+
+        self.last_train_epoch_idx = current_epoch
+        self.last_train_loss = total_loss / len(self.train_loader)
+
+        if hasattr(self, 'custom_after_train_callback'):
+            self.custom_after_train_callback()
 
     @torch.no_grad()
     def eval_one_epoch(self, current_epoch):
@@ -638,8 +765,8 @@ class TrainerTemplate:
 
                         im = Image.fromarray(error_map.mul(255).byte().cpu().numpy().transpose(1,2,0))
                         im.save(saving_loc)
-                    else:
-                        print(f"Saving error map for {data_name} not requested.")
+                    # else:
+                    #     print(f"Saving error map for {data_name} not requested.")
                         # save_image(error_map, saving_loc)
 
 

@@ -31,8 +31,12 @@ def threshold_metric(disp_pred, disp_gt, mask, threshold):
 
 
 def epe_metric(disp_pred, disp_gt, mask):
-    debug_printer.print_of_function_force_print(lambda: f"epe_metric(): disp_pred: Found NaN!", force_print=disp_pred.isfinite().all() == False)
-    debug_printer.print_of_function_force_print(lambda: f"epe_metric(): disp_gt: Found NaN!", force_print=disp_gt.isfinite().all() == False)
+    if not disp_pred.isfinite().all():
+        debug_printer.print_of_function_force_print(lambda: f"epe_metric(): disp_pred: Found NaN!")
+        raise ValueError("epe_metric(): disp_pred contains NaN values.")
+    if not disp_gt.isfinite().all():
+        debug_printer.print_of_function_force_print(lambda: f"epe_metric(): disp_gt: Found NaN!")
+        raise ValueError("epe_metric(): disp_gt contains NaN values.")
 
     E = torch.abs(disp_gt - disp_pred)
     E_masked = torch.where(mask, E, torch.zeros_like(E))
