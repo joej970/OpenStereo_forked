@@ -2,6 +2,8 @@
 # @Author  : zanr
 from stereo.modeling.trainer_template import TrainerTemplate
 from functools import partial
+from PIL import Image
+from stereo.utils import common_utils
 from stereo.utils.common_utils import color_map_tensorboard, write_tensorboard
 from stereo.evaluation.metric_per_image import epe_metric, d1_metric, threshold_metric
 import torch.distributed as dist
@@ -23,8 +25,17 @@ class Trainer(TrainerTemplate):
         cfgs.MODEL.aux_mode = args.run_mode  # 'train' or 'eval' or 'test'
         print(f"Constructing LeanStereo model with aux_mode: {cfgs.MODEL.aux_mode}")
         model = __all__[cfgs.MODEL.NAME](cfgs.MODEL)
-        super().__init__(args, cfgs, local_rank, global_rank, logger, tb_writer, model)
 
+        if args.run_mode == 'train':
+            self.total_epochs = cfgs.OPTIMIZATION.NUM_EPOCHS
+            if hasattr(cfgs.OPTIMIZATION, "NUM_EPOCHS_LEANSTEREO"):
+                print(f"Using specific LeanStereo training epochs: {cfgs.OPTIMIZATION.NUM_EPOCHS_LEANSTEREO}")
+                logger.info(f"Using specific LeanStereo training epochs: {cfgs.OPTIMIZATION.NUM_EPOCHS_LEANSTEREO}")
+                self.total_epochs = cfgs.OPTIMIZATION.NUM_EPOCHS_LEANSTEREO
+
+        super().__init__(args, cfgs, local_rank, global_rank, logger, tb_writer, model)
+        
+        
     def train_one_epoch(self, current_epoch, tbar):
         start_epoch = self.last_epoch + 1
         logger_iter_interval = self.cfgs.TRAINER.LOGGER_ITER_INTERVAL
@@ -152,9 +163,22 @@ class Trainer(TrainerTemplate):
                     prof.__exit__(None, None, None)
                     prof = None
 
+        self.last_train_epoch_idx = current_epoch
+        self.last_train_loss = total_loss / len(self.train_loader)
+
+        self.train_losses[current_epoch] = total_loss / len(self.train_loader)
+        self.train_lrs[current_epoch] = self.optimizer.param_groups[0]['lr']
+
+        if hasattr(self, 'custom_after_train_callback'):
+            self.custom_after_train_callback()
+
 
     @torch.no_grad()
     def eval_one_epoch(self, current_epoch):
+
+        print()
+        print(f"LeanStereoTrainer: Evaluating epoch: {current_epoch}")
+        print()
 
         metric_func_dict = {
             'epe': epe_metric,
@@ -177,6 +201,7 @@ class Trainer(TrainerTemplate):
             debug_printer.set_type('eval')
             debug_printer.set_epoch(current_epoch)
             debug_printer.set_total_samples(len(self.eval_loader))
+            debug_printer.set_print_eval_too(True)
         except ImportError:
             pass  # Debug utils not available
 
@@ -370,6 +395,25 @@ class Trainer(TrainerTemplate):
                         'image/test/disp': color_map_tensorboard(data['disp'][0], model_pred["disp_pred"].squeeze(1)[0])
                     }
                     write_tensorboard(self.tb_writer, tb_info, current_epoch * len(self.test_loader) + i)
+
+                for idx, data_name in enumerate(data['name']):
+                    if data_name in self.cfgs.TRAINER.SAVE_ERROR_MAP_LIST:
+                        print(f"Saving error map for: {data_name}")
+                        error_map = color_map_tensorboard(data['disp'][idx], model_pred['disp_pred'].squeeze(1)[idx])
+                        save_directory = os.path.join(self.args.output_dir, 'test_error_maps')
+                        
+                        file_name = common_utils.get_filename_from_path(data_name)
+                        file_name = f"{self.args.experiment_id}-{file_name}"
+                        saving_loc = os.path.join(save_directory, file_name)
+                        saving_loc = f"{saving_loc}.png"
+                        os.makedirs(os.path.dirname(saving_loc), exist_ok=True)
+                        print(f"saving error map: {saving_loc}")
+
+                        im = Image.fromarray(error_map.mul(255).byte().cpu().numpy().transpose(1,2,0))
+                        im.save(saving_loc)
+                    # else:
+                    #     print(f"Saving error map for {data_name} not requested.")
+                        # save_image(error_map, saving_loc)
 
             if prof:
                 prof.step()

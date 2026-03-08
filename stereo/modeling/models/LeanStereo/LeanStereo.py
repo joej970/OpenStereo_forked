@@ -4,6 +4,8 @@ import torch.nn as nn
 import torch.utils.data
 from torch.autograd import Variable
 import torch.nn.functional as F
+
+from tools.debug_utils import debug_printer
 # from models.submodule import *
 from .submodule import *
 import math
@@ -24,8 +26,11 @@ class feature_extraction(nn.Module):
                                           nn.Conv2d(128, concat_feature_channel, kernel_size=1, padding=0, stride=1,
                                                     bias=False))
 
-        self.forward = self.forward_single_image
+        # by default, do two separate passes (traditional way)
+        # self.forward = self.forward_single_image
+        self.forward = self.forward_left_right_one_by_one
 
+        # check if batching requested (new proposal)
         if (cfgs is not None):
             should_concat = cfgs.get('CONCAT_LEFT_RIGHT', False) # if not supplied, then assume False
             if should_concat:
@@ -41,9 +46,33 @@ class feature_extraction(nn.Module):
                     self.forward = self.forward_left_right_images_vertical
                 elif concat_type == 'multicut':
                     self.forward = self.forward_left_right_images_multicut
+                    self.h_division = cfgs.get('H_DIVISION', 1)
+                    self.w_division = cfgs.get('W_DIVISION', 2)
+                    print(f"Multicut concat: H_DIVISION={self.h_division}, W_DIVISION={self.w_division}")
+                    # if self.h_division is None or self.w_division is None:
+                    #     raise ValueError(f"MODEL.BACKBONE_CFGS.H_DIV and W_DIV must be specified for multicut concatenation.")                    
                 else:
                     raise NotImplementedError(f"Concat type '{concat_type}' is not implemented. Available: batch, horizontal, vertical, multicut")
 
+    
+    def forward_left_right_one_by_one(self, left, right):
+        # first left
+        features_left = self.features(left)
+        if self.concat_feature:
+            concat_feature_left = self.lastconv(features_left)
+
+        # then right
+        features_right = self.features(right)        
+        if self.concat_feature:
+            concat_feature_right = self.lastconv(self.features(right))
+
+        # return together
+        if self.concat_feature:
+            return {"features": features_left, "concat_feature": concat_feature_left}, \
+                     {"features": features_right, "concat_feature": concat_feature_right}
+        else:
+            return {"features": features_left}, {"features": features_right}
+ 
 
     def forward_left_right_images_along_batch(self, left, right):
         # concatenate left and right images along batch dimension
@@ -101,15 +130,16 @@ class feature_extraction(nn.Module):
     def forward_left_right_images_multicut(self, image_left, image_right):
         image_left_parts = []
         image_right_parts = []
-        w_division = 2
-        h_division = 1 # after division, the new height and width need to be divisible by 32 (depending on the backbone)
+        w_division = self.w_division
+        h_division = self.h_division
+        # after division, the new height and width need to be divisible by 32 (depending on the backbone)
 
         nr_of_parts = w_division * h_division  # 8
         h, w, b = image_left.size(-2), image_left.size(-1), image_left.size(0)
         h_divided = h // h_division
         w_divided = w // w_division
-        assert h_divided % 32 == 0, "Image height not divisible by 32"
-        assert w_divided % 32 == 0, "Image width not divisible by 32"
+        assert h_divided % 32 == 0, f"Original image height {h} divided down to {h_divided} not divisible by 32."
+        assert w_divided % 32 == 0, f"Original image width {w} divided down to {w_divided} not divisible by 32."
 
         for i in range(h_division):
             for j in range(w_division):
@@ -248,6 +278,7 @@ class LeanStereoNet(nn.Module):
         self.use_concat_volume = cfgs.USE_CONCAT_VOLUME
         self.aux_mode = cfgs.aux_mode
         self.loss_type = cfgs.LOSS_TYPE
+        self.concat_vol_builder_type = cfgs.get('CONCAT_VOLUME_BUILDER_TYPE', 'original')
 
 
         self.backbone_conf = cfgs.get('BACKBONE_CFGS', None)
@@ -264,6 +295,8 @@ class LeanStereoNet(nn.Module):
                                         nn.ReLU(inplace=True),
                                         nn.Conv2d(128, self.concat_channels, kernel_size=1, padding=0, stride=1,
                                                   bias=False))
+        
+        self.concat_volume = concat_volume_builder(builder_type=self.concat_vol_builder_type, maxdisp=self.max_disp // 4)
         # if self.aux_mode == "train":
 
         self.patch = nn.Conv3d(40, 40, kernel_size=(1, 3, 3), stride=1, dilation=1, groups=40, padding=(0, 1, 1),
@@ -352,28 +385,21 @@ class LeanStereoNet(nn.Module):
         left = data['left']
         right = data['right']
 
-        # if self.backbone_conf.get('CONCAT_LEFT_RIGHT', False):
-        # if self.backbone_conf.get('CONCAT_LEFT_RIGHT', False): # if not 
-            # print("Using concatenated left-right images for feature extraction.")
-        if (self.backbone_conf is not None) and (self.backbone_conf.get('CONCAT_LEFT_RIGHT', False)):
-            features_left, features_right = self.feature_extraction(left, right) # [H/8, W/8]
-        else:
-            # print(f"Using separate left and right images for feature extraction due to self.backbone_conf: {self.backbone_conf}")
-            features_left = self.feature_extraction(left) # H/8, W/8]
-            features_right = self.feature_extraction(right) 
+        features_left, features_right = self.feature_extraction(left, right) # [H/8, W/8]
 
         concat_feature_left = self.concatconv(features_left["features"]) # conv + bn + relu + conv
         concat_feature_right = self.concatconv(features_right["features"])
-        gwc_volume= build_concat_volume(concat_feature_left, concat_feature_right, self.max_disp // 4)
+        gwc_volume = self.concat_volume(concat_feature_left, concat_feature_right)
 
         att_weights = self.build_acvnet_volume(features_left["features"], features_right["features"])
-        volume= F.softmax(att_weights, dim=2) * gwc_volume
+        s_max = F.softmax(att_weights, dim=2)
+        volume = gwc_volume.mul_(s_max)
 
-        cost0 = self.dres0(volume)
-        cost0 = self.dres1(cost0) + cost0
+        cost0 = self.dres0(volume) # seq 1 # right before Mul before ScatterND_95 from 300 experiment 
+        cost0 = self.dres1(cost0) + cost0 # seq 2
 
-        out1 = self.dres2(cost0)
-        out2 = self.dres3(out1)
+        out1 = self.dres2(cost0) # hour glass 1 
+        out2 = self.dres3(out1) # hour glass 2
 
         if self.aux_mode == "train":
             cost0 = self.classif0(cost0)

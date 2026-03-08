@@ -37,8 +37,105 @@ def build_concat_volume(refimg_fea, targetimg_fea, maxdisp):
         else:
             volume[:, :C, i, :, :] = refimg_fea
             volume[:, C:, i, :, :] = targetimg_fea
+
     volume = volume.contiguous()
     return volume
+
+class concat_volume_builder(nn.Module):
+    def __init__(self, builder_type, maxdisp):
+        super(concat_volume_builder, self).__init__()
+        self.maxdisp = maxdisp
+        self.builder_type = builder_type
+
+        if self.builder_type == 'original':
+            self.forward = self.build_concat_volume_original
+        elif self.builder_type == 'reset':
+            self.forward = self.build_concat_volume_reset
+        elif self.builder_type == 'pad':
+            self.forward = self.build_concat_volume_pad
+        elif self.builder_type == 'clear':
+            self.forward = self.build_concat_volume_clear
+        else:
+            raise ValueError("Unknown builder type {}".format(self.builder_type))
+        print("Using concat volume builder type: {}".format(self.builder_type))
+                
+
+    # def forward(self, refimg_fea, targetimg_fea):
+    #     return build_concat_volume(refimg_fea, targetimg_fea, self.maxdisp)
+    def build_concat_volume_original(self,refimg_fea, targetimg_fea):
+        maxdisp = self.maxdisp
+        B, C, H, W = refimg_fea.shape
+        volume = refimg_fea.new_zeros([B, 2 * C, maxdisp, H, W])
+        for i in range(maxdisp):
+            if i > 0:
+                volume[:, :C, i, :, i:] = refimg_fea[:, :, :, i:]
+                volume[:, C:, i, :, i:] = targetimg_fea[:, :, :, :-i]
+            else:
+                volume[:, :C, i, :, :] = refimg_fea
+                volume[:, C:, i, :, :] = targetimg_fea
+
+        volume = volume.contiguous()
+        return volume
+
+    def build_concat_volume_reset(self, refimg_fea, targetimg_fea):
+        maxdisp = self.maxdisp
+        B, C, H, W = refimg_fea.shape
+        volume = refimg_fea.new_zeros([B, 2 * C, maxdisp, H, W])
+
+        for i in range(maxdisp):
+            if i > 0:
+                padded_ref = refimg_fea.clone()
+                padded_target = targetimg_fea.clone()
+                padded_ref[:, :, :, :i] = 0  # zero first i columns
+                padded_target[:, :, :, -i:] = 0  # zero last i columns
+                padded_target = torch.roll(padded_target, shifts=i, dims=-1)
+                concatenated = torch.cat((padded_ref, padded_target), dim=1)
+                volume[:, :, i, :, :] = concatenated
+            else:
+                concatenated = torch.cat((refimg_fea, targetimg_fea), dim=1)
+                volume[:, :, i, :, :] = concatenated
+
+        volume = volume.contiguous()
+        return volume
+    
+    def build_concat_volume_pad(self, refimg_fea, targetimg_fea):
+        maxdisp = self.maxdisp
+        B, C, H, W = refimg_fea.shape
+        volume = refimg_fea.new_zeros([B, 2 * C, maxdisp, H, W])
+
+        for i in range(maxdisp):
+            if i > 0:
+                padded_ref = F.pad(refimg_fea[:, :, :, i:], (i, 0), "constant", 0)
+                padded_target = F.pad(targetimg_fea[:, :, :, :-i], (i, 0), "constant", 0)
+                concatenated = torch.cat((padded_ref, padded_target), dim=1)
+                volume[:, :, i, :, :] = concatenated
+            else:
+                concatenated = torch.cat((refimg_fea, targetimg_fea), dim=1)
+                volume[:, :, i, :, :] = concatenated
+
+        volume = volume.contiguous()
+        return volume
+    
+    def build_concat_volume_clear(self, refimg_fea, targetimg_fea):
+        maxdisp = self.maxdisp
+        B, C, H, W = refimg_fea.shape
+        volume = refimg_fea.new_zeros([B, 2 * C, maxdisp, H, W])
+
+        for i in range(maxdisp):
+            if i > 0:
+                refimg_fea[:, :, :, i-1] = 0
+                targetimg_fea[:, :, :, -1] = 0
+
+                targetimg_fea = torch.roll(targetimg_fea, shifts=1, dims=-1)
+
+                concatenated = torch.cat((refimg_fea, targetimg_fea), dim=1)
+                volume[:, :, i, :, :] = concatenated
+            else:
+                concatenated = torch.cat((refimg_fea, targetimg_fea), dim=1)
+                volume[:, :, i, :, :] = concatenated
+
+        volume = volume.contiguous()
+        return volume
 
 
 def groupwise_correlation(fea1, fea2, num_groups):
