@@ -9,11 +9,13 @@ import numpy as np
 import sys
 sys.path.append('.')
 from .cost_volume import MsCostVolumeManager
-from .networks import (CVEncoder, ResnetMatchingEncoder,UnetMatchingEncoder, DepthDecoderMSR)
+from .networks import (CVEncoder, ResnetMatchingEncoder,UnetMatchingEncoder, ConcatenatedUnetMatchingEncoder, DepthDecoderMSR)
 from .loss import build_criterion
 
 from easydict import EasyDict
 from stereo.utils import common_utils
+
+from tools.debug_utils import debug_printer
 
 class IINet(nn.Module):
 
@@ -78,10 +80,11 @@ class IINet(nn.Module):
         elif "unet" == self.run_opts.MATCHING_ENCODER_TYPE:
             #prefp = opts.pre_weight_name
             prefp = None
-            self.matching_model = UnetMatchingEncoder(self.run_opts.MATCHING_FEATURE_DIMS,
+            self.matching_model = ConcatenatedUnetMatchingEncoder(self.run_opts.MATCHING_FEATURE_DIMS,
                                                       self.run_opts.MATCHING_SCALE,
                                                       self.run_opts.MULTISCALE,
-                                                      pretrainedfp=prefp)
+                                                      pretrainedfp=prefp,
+                                                      cfgs = self.run_opts.BACKBONE_CFGS)
         else:
             raise ValueError("Unrecognized option for matching encoder type!")
 
@@ -90,9 +93,9 @@ class IINet(nn.Module):
         left_image, right_image = input['left'], input['right']
         assert left_image.shape[2]%32 == 0 and right_image.shape[2]%32 == 0, "Image size must be divisible by 32!"
 
-        matching_left_feats, left_feats = self.matching_model(left_image)
-        matching_right_feats, _ = self.matching_model(right_image)
-
+        # matching_left_feats, left_feats = self.matching_model(left_image)
+        # matching_right_feats, _ = self.matching_model(right_image)
+        (matching_left_feats, left_feats), (matching_right_feats, right_feats) = self.matching_model(left_image,right_image)
         cost_volumes, hypos, priority = self.cost_volume(
                                                 left_feats=matching_left_feats,
                                                right_feats=matching_right_feats,
@@ -111,7 +114,7 @@ class IINet(nn.Module):
 
             # Decode into depth at multiple resolutions.
             depth_outputs = self.depth_decoder(left_feats, priority)
-        else:
+        else: # uncer estimation only (pre-training, for 13 epochs)
             depth_outputs = {}
 
         depth_outputs["coarse_disp"] = priority['cdisp'][0]
@@ -124,9 +127,10 @@ class IINet(nn.Module):
 
         return depth_outputs
 
-    def get_loss(self, config, input, output):
-        criterion = build_criterion(config.MODEL, config.TRAINER.LOSS_WEIGHT)
-        losses = criterion(input,  output, config.TRAINER.UNCER_ONLY)
+    def get_loss(self, config, input, output, only_uncer):
+        if not hasattr(self, 'criterion'):
+            self.criterion = build_criterion(config.MODEL, config.TRAINER.LOSS_WEIGHT)
+        losses = self.criterion(input,  output, only_uncer)
         loss_info = {'scalar/train/loss_focal': losses['focal'].item(),
                      'scalar/train/normal': losses['normal'].item(),
                      'scalar/train/aggregated': losses['aggregated'].item()}

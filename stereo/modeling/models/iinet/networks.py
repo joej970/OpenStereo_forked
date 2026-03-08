@@ -333,13 +333,17 @@ class UnetMatchingEncoder(nn.Module):
             matching_scale=1,
             multiscale=1,
             pretrainedfp=None,
+            cfgs = None
     ):
         super().__init__()
+
+        self.backbone_cfgs = cfgs
 
         self.num_ch_enc = np.array([16, 24, 40, 112, 160])
         self.num_ch_up = np.array([16, 24, 40, 112])
         self.multiscale = multiscale
-        self.num_ch_out = np.array([16, 16, 16, 16])
+        # self.num_ch_out = np.array([16, 16, 16, 16])
+        self.num_ch_out = np.ones((4)) * num_ch_out # defined in yaml file
         self.lrcvscale = matching_scale + 1
 
         if pretrainedfp:
@@ -377,15 +381,15 @@ class UnetMatchingEncoder(nn.Module):
             num_ch_up = self.num_ch_enc[i]
             num_ch_left = self.num_ch_enc[i - 1]
             num_ch_right = self.num_ch_up[i - 1]
-            num_ch_out = self.num_ch_out[i - 1]
+            num_ch_out_l = int(self.num_ch_out[i - 1])
             self.convs[f'in_conv{i}'] = nn.Sequential(
                 nn.Conv2d(num_ch_left + num_ch_right,  num_ch_right, kernel_size=3, padding=1),
                 nn.BatchNorm2d(num_ch_right),
                 nn.LeakyReLU(0.2, True))
             if self.lrcvscale - multiscale <= i < self.lrcvscale + 1:
                 self.convs[f'out_conv{i}'] = nn.Sequential(
-                    nn.Conv2d(num_ch_right, num_ch_out, kernel_size=3, padding=1, padding_mode="replicate"),
-                    nn.InstanceNorm2d(num_ch_out))
+                    nn.Conv2d(num_ch_right, num_ch_out_l, kernel_size=3, padding=1, padding_mode="replicate"),
+                    nn.InstanceNorm2d(num_ch_out_l))
             self.convs[f'up_conv{i+1}'] = nn.Sequential(
                 nn.ConvTranspose2d(num_ch_up, num_ch_right, kernel_size=4, stride=2, padding=1, bias=False),
                 nn.BatchNorm2d(num_ch_right),
@@ -421,3 +425,242 @@ class UnetMatchingEncoder(nn.Module):
             if self.lrcvscale - self.multiscale <= i <= self.lrcvscale: # if 1, 2, or 3
                 output[i - self.lrcvscale + self.multiscale] = self.convs[f'out_conv{i}'](x_up)
         return output, feat_output
+
+
+class ConcatenatedUnetMatchingEncoder(UnetMatchingEncoder):
+    def __init__(
+            self,
+            num_ch_out,
+            matching_scale=1,
+            multiscale=1,
+            pretrainedfp=None,
+            cfgs = None
+    ):
+        super().__init__(
+            num_ch_out,
+            matching_scale,
+            multiscale,
+            pretrainedfp,
+            cfgs
+        )
+        self.backbone_cfgs = cfgs
+
+        self.impl = super().forward
+
+        # default implementation
+        self.forward = self.forward_left_right_one_by_one
+
+        if (cfgs is not None):
+            should_concat = cfgs.get('CONCAT_LEFT_RIGHT', False) # if not supplied, then assume False
+            if should_concat:
+                concat_type = cfgs.get('CONCAT_LEFT_RIGHT_ALONG', None)
+                if concat_type is None:
+                    raise ValueError(f"Could not find MODEL.BACKBONE_CFGS.CONCAT_LEFT_RIGHT_ALONG parameter in yaml config file.")
+                print(f"BACKBONE CONCAT LEFT-RIGHT is ENABLED. Type: {concat_type}")
+                if concat_type == 'batch':
+                    self.forward = self.forward_left_right_images_along_batch
+                elif concat_type == 'horizontal':
+                    self.forward = self.forward_left_right_images_horizontal
+                elif concat_type == 'vertical':
+                    self.forward = self.forward_left_right_images_vertical
+                elif concat_type == 'multicut':
+                    self.forward = self.forward_left_right_images_multicut
+                    self.h_division = cfgs.get('H_DIVISION', None)
+                    self.w_division = cfgs.get('W_DIVISION', None)
+                    if self.h_division is None or self.w_division is None:
+                        raise ValueError(f"MODEL.BACKBONE_CFGS.H_DIV and W_DIV must be specified for multicut concatenation.")
+                    print(f"Multicut concat: H_DIVISION={self.h_division}, W_DIVISION={self.w_division}")
+                else:
+                    raise NotImplementedError(f"Concat type '{concat_type}' is not implemented. Available: batch, horizontal, vertical, multicut")
+
+
+    def forward_left_right_one_by_one(self, left, right):
+        features_left = self.impl(left)
+        features_right = self.impl(right)
+        return features_left, features_right
+
+    def forward_left_right_images_along_batch(self, left, right):
+        # concatenate along batch dimension
+        combined = torch.cat([left, right], dim=0)
+
+        # pass through backbone
+        combined_output, combined_feat_output = self.impl(combined)
+        # returns output, feat_output
+
+        # # split features back to left and right
+        
+        output_left = [feat[:left.size(0)] for feat in combined_output]
+        output_right = [feat[left.size(0):] for feat in combined_output]
+        
+        feat_output_left = [feat[:left.size(0)] for feat in combined_feat_output]
+        feat_output_right = [feat[left.size(0):] for feat in combined_feat_output]
+
+        return (output_left, feat_output_left), (output_right, feat_output_right)
+
+    def forward_left_right_images_horizontal(self, left, right):
+        # concatenate left and right images along width dimension
+        concat_images = torch.cat((left, right), dim=-1)  # [B, C, H, 2*W]
+
+        output, feat_output = self.impl(concat_images)
+
+        output_left = []
+        output_right = []
+
+        for feat in output:
+            w = feat.size(-1)
+            w_divided = w // 2
+            output_left.append(feat[..., :w_divided])
+            output_right.append(feat[..., w_divided:])
+
+        feat_output_left = []
+        feat_output_right = []
+
+        for feat in feat_output:
+            w = feat.size(-1)
+            w_divided = w // 2
+            feat_output_left.append(feat[..., :w_divided])
+            feat_output_right.append(feat[..., w_divided:])
+
+        return (output_left, feat_output_left), (output_right, feat_output_right)
+
+    def forward_left_right_images_vertical(self, left, right):
+        # concatenate along vertical dimension
+        combined = torch.cat([left, right], dim=-2)
+
+        # pass through backbone
+        output, feat_output = self.impl(combined)
+
+        output_left = []
+        output_right = []
+
+        # split features back to left and right
+        for feat in output:
+            h = feat.size(-2)
+            h_divided = h // 2
+            output_left.append(feat[..., :h_divided, :])
+            output_right.append(feat[..., h_divided:, :])
+
+        feat_output_left = []
+        feat_output_right = []
+
+        for feat in feat_output:
+            w = feat.size(-2)
+            w_divided = w // 2
+            feat_output_left.append(feat[..., :w_divided, :])
+            feat_output_right.append(feat[..., w_divided:, :])
+
+        return (output_left, feat_output_left), (output_right, feat_output_right)
+
+    def forward_left_right_images_multicut(self, image_left, image_right):
+        
+        # [24, 3, 544, 960], tensor contigous = yes type: <class 'torch.Tensor'>
+
+        # cut each image into 4 parts vertically and 2 parts horizontally -> 8 parts
+        image_left_parts = []
+        image_right_parts = []
+
+        h_division = self.h_division
+        w_division = self.w_division
+        # after division, the new height and width need to be divisible by 32 (depending on the backbone)
+
+        nr_of_parts = w_division * h_division  # 8
+        h, w, b = image_left.size(-2), image_left.size(-1), image_left.size(0)
+        h_divided = h // h_division
+        w_divided = w // w_division
+        assert h_divided % 32 == 0, f"Divided down height {h_divided} not divisible by 32 (originally {h})"
+        assert w_divided % 32 == 0, f"Divided down width {w_divided} not divisible by 32 (originally {w})"
+        
+        # print(f"Dividing images into {nr_of_parts} parts: {h_division} along height, {w_division} along width. Each part size: {h_divided} x {w_divided} from original {h} x {w}. Batch size is {b} so we expect {nr_of_parts * b} parts total along batch dimension.")
+
+        for i in range(h_division):
+            for j in range(w_division):
+                image_left_parts.append(image_left[..., i*h_divided:(i+1)*h_divided, j*w_divided:(j+1)*w_divided])
+                image_right_parts.append(image_right[..., i*h_divided:(i+1)*h_divided, j*w_divided:(j+1)*w_divided])
+        
+        left_stack = torch.cat(image_left_parts, dim=0)
+        right_stack = torch.cat(image_right_parts, dim=0)
+
+        # concatenate all parts along batch dimension
+        combined = torch.cat((left_stack, right_stack), dim=0) 
+
+        # print(f"Combined parts shape: {combined.shape}, should be [{nr_of_parts * b * 2}, c, h/div_h, w/div_v]" )
+
+        output, feat_output = self.impl(combined)
+
+        output_left = []
+        output_right = []
+
+        # handle 'output' first
+        for feat in output:
+
+            # should be [b*2*8, c, h/4, w/2]
+            combined_features_left = feat[:nr_of_parts*b, ...]
+            combined_features_right = feat[nr_of_parts*b:, ...]
+
+            left_feat_image = []
+            right_feat_image = []
+            
+            for bi in range(b):
+
+                left_v_sequence = []
+                right_v_sequence = []
+                for i in range(h_division):
+                
+                    left_h_sequence = []
+                    right_h_sequence = []
+                    
+                    for j in range(w_division):
+                    
+                        left_h_sequence.append(combined_features_left[i*b*w_division + j*b + bi, ...]) # append to horizontal sequence
+                        right_h_sequence.append(combined_features_right[i*b*w_division + j*b + bi, ...])
+
+                    left_v_sequence.append(torch.cat(left_h_sequence, dim=-1)) # first concat along width (get full row), then append to vertical sequence
+                    right_v_sequence.append(torch.cat(right_h_sequence, dim=-1))
+
+                left_feat_image.append(torch.cat(left_v_sequence, dim=-2)) # first concat along height (get full image), then append along batch dimension
+                right_feat_image.append(torch.cat(right_v_sequence, dim=-2))
+
+
+            output_left.append(torch.stack(left_feat_image, dim=0)) # first stack along batch, then append to features list
+            output_right.append(torch.stack(right_feat_image, dim=0))
+
+        feat_output_left = []
+        feat_output_right = []
+
+        # handle 'feat_output' second
+        for feat in feat_output:
+
+            # should be [b*2*8, c, h/4, w/2]
+            combined_features_left = feat[:nr_of_parts*b, ...]
+            combined_features_right = feat[nr_of_parts*b:, ...]
+
+            left_feat_image = []
+            right_feat_image = []
+            
+            for bi in range(b):
+
+                left_v_sequence = []
+                right_v_sequence = []
+                
+                for i in range(h_division): # along height
+
+                    left_h_sequence = []
+                    right_h_sequence = []
+                
+                    for j in range(w_division): # along width
+
+                        left_h_sequence.append(combined_features_left[i*b*w_division + j*b + bi, ...]) # append to horizontal sequence
+                        right_h_sequence.append(combined_features_right[i*b*w_division + j*b + bi, ...])
+
+                    left_v_sequence.append(torch.cat(left_h_sequence, dim=-1)) # first concat along width (get full row), then append to vertical sequence
+                    right_v_sequence.append(torch.cat(right_h_sequence, dim=-1))
+
+                left_feat_image.append(torch.cat(left_v_sequence, dim=-2)) # first concat along height (get full image), then append along batch dimension
+                right_feat_image.append(torch.cat(right_v_sequence, dim=-2))
+
+            feat_output_left.append(torch.stack(left_feat_image, dim=0)) # first stack along batch, then append to features list
+            feat_output_right.append(torch.stack(right_feat_image, dim=0))
+
+
+        return (output_left, feat_output_left), (output_right, feat_output_right)
+    

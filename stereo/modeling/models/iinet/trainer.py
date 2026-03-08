@@ -21,6 +21,14 @@ __all__ = {
 class Trainer(TrainerTemplate):
     def __init__(self, args, cfgs, local_rank, global_rank, logger, tb_writer):
         model = __all__[cfgs.MODEL.NAME](cfgs.MODEL)
+
+        if args.run_mode == 'train':
+            self.total_epochs = cfgs.OPTIMIZATION.NUM_EPOCHS
+            if hasattr(cfgs.OPTIMIZATION, "NUM_EPOCHS_IINET"):
+                print(f"Using specific IINet training epochs: {cfgs.OPTIMIZATION.NUM_EPOCHS_IINET}")
+                logger.info(f"Using specific IINet training epochs: {cfgs.OPTIMIZATION.NUM_EPOCHS_IINET}")
+                self.total_epochs = cfgs.OPTIMIZATION.NUM_EPOCHS_IINET
+
         super().__init__(args, cfgs, local_rank, global_rank, logger, tb_writer, model)
 
     def _get_pos_fullres(self, fx, w, h):
@@ -37,6 +45,19 @@ class Trainer(TrainerTemplate):
         total_loss = 0.0
         loss_func = self.model.module.get_loss if self.args.dist_mode else self.model.get_loss
 
+        only_uncer = current_epoch <= self.cfgs.TRAINER.UNCER_ONLY_EPOCHS
+
+        # Set debug printer epoch and total samples
+        try:
+            from tools.debug_utils import debug_printer
+            debug_printer.set_type('train')
+            debug_printer.set_epoch(current_epoch)
+            debug_printer.set_total_samples(len(self.train_loader))
+        except ImportError:
+            pass  # Debug utils not available
+
+        print(f"IINet Trainer: Epoch {current_epoch}: only_uncer = {only_uncer}")
+
         train_loader_iter = iter(self.train_loader)
         for i in range(0, len(self.train_loader)):
             self.optimizer.zero_grad()
@@ -45,6 +66,15 @@ class Trainer(TrainerTemplate):
             start_timer = time.time()
             data = next(train_loader_iter)
 
+            # Update debug printer sample index
+            try:
+                from tools.debug_utils import debug_printer
+                debug_printer.set_sample(i) # this is actually batch number
+                samples = ','.join(data['name']) if 'name' in data else 'unknown samples'
+                debug_printer.set_sample_name(samples)
+            except ImportError:
+                pass  # Debug utils not available
+                
             # IINet 预处理
             data_timer = time.time()    
             data['disp_pyr'] = data['disp'].unsqueeze(1)
@@ -53,10 +83,10 @@ class Trainer(TrainerTemplate):
                 data[k] = v.to(self.local_rank) if torch.is_tensor(v) else v
             data_timer = time.time()
 
-            with torch.cuda.amp.autocast(enabled=self.cfgs.OPTIMIZATION.AMP):
-                model_pred = self.model(data)
+            with torch.amp.autocast('cuda', enabled=self.cfgs.OPTIMIZATION.AMP):
+                model_pred = self.model(input = data, only_uncer = only_uncer)
                 infer_timer = time.time()
-                loss, tb_info = loss_func(self.cfgs, data, model_pred)
+                loss, tb_info = loss_func(self.cfgs, data, model_pred, only_uncer = only_uncer)
 
             # 不要在autocast下调用, calls backward() on scaled loss to create scaled gradients.
             self.scaler.scale(loss).backward()
@@ -105,6 +135,15 @@ class Trainer(TrainerTemplate):
             if total_iter % logger_iter_interval == 0 and self.local_rank == 0 and self.tb_writer is not None:
                 write_tensorboard(self.tb_writer, tb_info, total_iter)
 
+        self.train_losses[current_epoch] = total_loss / len(self.train_loader)
+        self.train_lrs[current_epoch] = self.optimizer.param_groups[0]['lr']
+
+        self.last_train_epoch_idx = current_epoch
+        self.last_train_loss = total_loss / len(self.train_loader)
+
+        if hasattr(self, 'custom_after_train_callback'):
+            self.custom_after_train_callback()
+
     @torch.no_grad()
     def eval_one_epoch(self, current_epoch):
 
@@ -116,6 +155,16 @@ class Trainer(TrainerTemplate):
             'thres_3': partial(threshold_metric, threshold=3),
         }
 
+        # Set debug printer epoch and total samples
+        try:
+            from tools.debug_utils import debug_printer
+            debug_printer.set_type('eval')
+            debug_printer.set_epoch(current_epoch)
+            debug_printer.set_total_samples(len(self.eval_loader))
+            debug_printer.set_print_eval_too(True)
+        except ImportError:
+            pass  # Debug utils not available
+
         evaluator_cfgs = self.cfgs.EVALUATOR
         local_rank = self.local_rank
 
@@ -124,9 +173,17 @@ class Trainer(TrainerTemplate):
             epoch_metrics[k] = {'indexes': [], 'values': []}
 
         for i, data in enumerate(self.eval_loader):
+
+            # Update debug printer sample index
+            try:
+                from tools.debug_utils import debug_printer
+                debug_printer.set_sample(i) # this is actually batch number
+            except ImportError:
+                pass  # Debug utils not available
+
             for k, v in data.items():
                 data[k] = v.to(local_rank) if torch.is_tensor(v) else v
-            with torch.cuda.amp.autocast(enabled=self.cfgs.OPTIMIZATION.AMP):
+            with torch.amp.autocast('cuda', enabled=self.cfgs.OPTIMIZATION.AMP):
                 infer_start = time.time()
                 model_pred = self.model(data)
                 infer_time = time.time() - infer_start
@@ -144,6 +201,20 @@ class Trainer(TrainerTemplate):
                 res = metric_func(disp_pred.squeeze(1), disp_gt, mask)
                 epoch_metrics[m]['indexes'].extend(data['index'].tolist())
                 epoch_metrics[m]['values'].extend(res.tolist())
+
+
+            results = {}
+            for k in epoch_metrics.keys():
+                results[k] = torch.tensor(epoch_metrics[k]["values"]).mean()
+
+            if local_rank == 0 and self.tb_writer is not None:
+                tb_info = {}
+                for k, v in results.items():
+                    tb_info[f'scalar/val/{k}'] = v.item()
+
+                write_tensorboard(self.tb_writer, tb_info, current_epoch)
+
+            self.eval_epes[current_epoch] = results['epe'].item()
 
             if i % self.cfgs.TRAINER.LOGGER_ITER_INTERVAL == 0:
                 message = ('Evaluating Epoch:{:>2d} Iter:{:>4d}/{} InferTime: {:.2f}ms'
@@ -192,3 +263,10 @@ class Trainer(TrainerTemplate):
             write_tensorboard(self.tb_writer, tb_info, current_epoch)
 
         self.logger.info(f"Epoch {current_epoch} metrics: {results}")
+        if current_epoch != -1:
+            self.eval_epes[current_epoch] = results['epe'].item()
+            if results['epe'] < self.best_epe:
+                self.best_epe = results['epe']
+                self.logger.info(f"New best EPE: {self.best_epe:.4f} at epoch {current_epoch}")
+                # self.save_best_pth(current_epoch) # will do this in the main train
+        return results

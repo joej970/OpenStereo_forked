@@ -11,6 +11,10 @@ import sys
 sys.path.append('.')
 from .metrics import cal_metric
 
+from tools.debug_utils import debug_printer
+from stereo.utils import common_utils
+
+LOSS_LIMIT = 20.0
 
 class VolumeBiFocalLoss(nn.Module):
     def __init__(self, alpha, gamma):
@@ -46,6 +50,8 @@ class Criterion(nn.Module):
         self.focal_loss = VolumeBiFocalLoss(alpha=0.8, gamma=2)
         self.klloss = torch.nn.KLDivLoss(size_average=None, reduce=None, reduction='none', log_target=False)
 
+        self.remaining_invalid_losses_count = 50
+
     @staticmethod
     def to_homogeneous(input_tensor: Tensor, dim: int = 0) -> Tensor:
         """
@@ -61,7 +67,7 @@ class Criterion(nn.Module):
         """ Creates a downscale pyramid for the input tensor. """
         output = [None] * self.num_scales
         output[0] = input_tensor
-        for i in range(1, self.num_scales):
+        for i in range(1, self.num_scales): # i = 1,2,3
             _,_,h,w = output[i - 1].shape
             down = F.interpolate(output[i-1], size=(h // 2, w // 2), mode='nearest')
             output[i] = down
@@ -108,8 +114,14 @@ class Criterion(nn.Module):
         # disp_pred = outputs["disp_pred_s0"]
         disp_gt = (inputs['disp_pyr'][0] / self.depth_scale)
 
-        normals_gt = cal_normal(disp_gt, inputs['pos'], self.kernel_size, self.std)
-        normals_pred = cal_normal(disp_pred, inputs['pos'], self.kernel_size, self.std)
+        try:
+            normals_gt = cal_normal(disp_gt, inputs['pos'], self.kernel_size, self.std)
+            # KeyError: 'pos'
+            normals_pred = cal_normal(disp_pred, inputs['pos'], self.kernel_size, self.std)
+        except KeyError as e:
+            print(f"KeyError: {e}. Available keys in 'inputs': {list(inputs.keys())}")
+            # KeyError: 'pos'. Available keys in 'inputs': ['left', 'right', 'disp', 'valid', 'index', 'name', 'disp_pyr']
+            raise
 
         normals_mask = torch.logical_and(
             normals_gt.isfinite().all(dim=1, keepdim=True),
@@ -135,6 +147,12 @@ class Criterion(nn.Module):
                     disp_pred = outputs[f"disp_pred_s{i}"]
                 l1disp_loss[i] = self.l1_crit(disp_gt[validmask], disp_pred[validmask])
 
+                if l1disp_loss[i] > LOSS_LIMIT or torch.isnan(l1disp_loss[i]) or torch.isinf(l1disp_loss[i]):
+                    debug_printer.print_of_function_force_print(lambda : f"\nL1 loss at scale {i}: {l1disp_loss[i].item():.4f}")
+                    field_name = "disp_pred" if i == 0 else f"disp_pred_s{i}"
+                    debug_printer.print_of_function_force_print(common_utils.check_max_vals, disp_pred[validmask], name=f"{field_name}[validmask]", n_max_vals=5)
+                    debug_printer.print_of_function_force_print(common_utils.check_max_vals, disp_gt[validmask], name=f"disp_gt[validmask]", n_max_vals=5)
+
             return l1disp_loss
 
     def cal_msgrad_loss(self, inputs: dict, outputs: dict, validmask_pyr: list) -> list:
@@ -153,6 +171,12 @@ class Criterion(nn.Module):
             grad_error = torch.abs(disp_pred_grad.masked_select(validmask) -
                                    disp_gt_grad.masked_select(validmask))
             grad_loss[i] = torch.mean(grad_error)
+
+            if grad_loss[i] > LOSS_LIMIT or torch.isnan(grad_loss[i]) or torch.isinf(grad_loss[i]):
+                debug_printer.print_of_function_force_print(lambda : f"\nGrad loss at scale {i}: {grad_loss[i].item():.4f}")
+                debug_printer.print_of_function_force_print(common_utils.check_max_vals, disp_pred_grad.masked_select(validmask), name="disp_pred_grad[validmask]", n_max_vals=5)
+                debug_printer.print_of_function_force_print(common_utils.check_max_vals, disp_gt_grad.masked_select(validmask), name="disp_gt_grad[validmask]", n_max_vals=5)
+
 
         return grad_loss
 
@@ -232,9 +256,25 @@ class Criterion(nn.Module):
         for key,value in loss_dict.items():
             if isinstance(value, list):
                 for i in range(0, self.num_scales):
-                    loss += loss_dict[key][i] * self.weights[key][i]
+                    curr_los = loss_dict[key][i]
+                    if curr_los > LOSS_LIMIT or torch.isnan(curr_los) or torch.isinf(curr_los):
+                        self.remaining_invalid_losses_count -= 1
+                        debug_printer.print_of_function_force_print(lambda: f"Warning [IINet loss.py]: {key} loss at scale {i} is {curr_los}. Zeroing this loss term. Remaining allowed invalid losses: {self.remaining_invalid_losses_count}")
+                        if self.remaining_invalid_losses_count <= 0:
+                            raise RuntimeError(f"Too many invalid loss terms encountered. Exiting.")
+                        curr_los = torch.zeros_like(curr_los)
+                        
+                    loss += curr_los * self.weights[key][i]
             else:
-                loss += loss_dict[key] * self.weights[key]
+                curr_los = loss_dict[key]
+                if curr_los > LOSS_LIMIT or torch.isnan(curr_los) or torch.isinf(curr_los):
+                    self.remaining_invalid_losses_count -= 1
+                    debug_printer.print_of_function_force_print(lambda: f"Warning [IINet loss.py]: {key} is {curr_los}. Zeroing this loss term. Remaining allowed invalid losses: {self.remaining_invalid_losses_count}")
+                    if self.remaining_invalid_losses_count <= 0:
+                        raise RuntimeError(f"Too many invalid loss terms encountered. Exiting.")
+                    curr_los = torch.zeros_like(curr_los)
+                loss += curr_los * self.weights[key]
+            
         loss_dict['aggregated'] = loss
         return
 
@@ -272,6 +312,8 @@ class Criterion(nn.Module):
 
         if ((validmask_pyr[0].float().flatten(1).mean(dim=-1) / (inputs['disp_pyr'][0] > 0).float().flatten(
                 1).mean(dim=-1)) < 0.1).any():
+            # print(f"Warning: too few valid pixels in depth map, zeroing total loss.")
+            debug_printer.print_of_function_force_print(lambda : f"Warning: too few valid pixels in depth map, zeroing total loss.")
             loss['aggregated'] = loss['aggregated'] * 0.0
 
         # for benchmarking
