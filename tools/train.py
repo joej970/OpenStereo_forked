@@ -2,7 +2,6 @@
 # @Author  : zhangchenming
 import sys
 import os
-import argparse
 import datetime
 import tqdm
 from easydict import EasyDict
@@ -54,6 +53,7 @@ def log_configs_to_tensorboard(cfgs, tb_writer, pre='cfgs', step=0):
 def main():
     print("In main() function of train.py")
     args, cfgs = config_parsing.parse_config()
+
     if args.dist_mode:
         id = os.getpid()
         print(f"Process {id}: Starting distributed process...")
@@ -205,10 +205,25 @@ def main():
     model_trainer.evaluate(-1)
     print("Initial evaluation completed. Starting training epochs.")
     
+    train_losses = []
+    train_lrs = []
+    train_epochs = []
+    eval_epes = []
+    eval_epochs = []
+
+    current_epoch = 0
+
     for current_epoch in tbar:
         model_trainer.train(current_epoch, tbar)
         training_epoch_count += 1
         model_trainer.save_ckpt(current_epoch)
+
+        train_losses.append(model_trainer.train_losses.get(current_epoch, None))
+        train_lrs.append(model_trainer.train_lrs.get(current_epoch, None))
+        train_epochs.append(current_epoch)
+
+
+
         if current_epoch % cfgs.TRAINER.EVAL_INTERVAL == 0 or current_epoch == model_trainer.total_epochs - 1:
             model_trainer.evaluate(current_epoch)
             evaluation_epoch_count += 1
@@ -217,10 +232,24 @@ def main():
                 print(f"Warning: EPE for epoch {current_epoch} not found")
                 print(f"Found only: {model_trainer.eval_epes}")
             else:
+                eval_epes.append(current_epe)
+                eval_epochs.append(current_epoch)
+
+                common_utils.draw_eval_epe(args.output_dir, args.slurm_job_id, args.experiment_id, eval_epochs=eval_epochs, eval_epes=eval_epes)
+
                 if current_epe < best_epoch['epe']:
                     best_epoch = {'idx': current_epoch, 'epe': current_epe}
                     model_trainer.save_best_pth(current_epoch)
                     print(f"Saving best model for epoch {best_epoch} with EPE {current_epe}")
+
+        common_utils.draw_train_loss_lr(
+            args.output_dir, args.slurm_job_id, args.experiment_id,
+            train_epochs = train_epochs,
+            train_losses = train_losses,
+            train_lrs = train_lrs,
+            eval_epochs = eval_epochs,
+            eval_epes = eval_epes
+        )
 
     # End timing the training
     training_end_time = datetime.datetime.now()
@@ -362,8 +391,10 @@ def main():
         print("Model does not have additional depth source")
     print("")
 
-
-    shape = [1, 3, 544, 960]  # keep batchsize 1
+    test_resolution = cfgs.DATA_CONFIG.DATA_TRANSFORM.TESTING[0].SIZE
+    # shape = [1, 3, 544, 960]  # keep batchsize 1
+    shape = [1, 3, test_resolution[0], test_resolution[1]]  # keep batchsize 1
+    print(f"Test Resolution is {shape}.") 
     message = f"Process {os.getpid()}: [Rank {global_rank}/{WORLD_SIZE}]: Benchmarking model with shape {shape}"
     logger.info(message)
     experiment_summary["inference_benchmark"]["shape"] = shape

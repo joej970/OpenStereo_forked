@@ -27,7 +27,7 @@ def parse_config():
     parser = argparse.ArgumentParser(description='arg parser')
     # mode
     parser.add_argument('--dist_mode', action='store_true', default=False, help='torchrun ddp multi gpu')
-    parser.add_argument('--cfg_file', type=str, default=None, required=True, help='specify the config for training')
+    parser.add_argument('--cfg_file', type=str, default=None, required=False, help='specify the config for training')
     parser.add_argument('--data_cfg_file', type=str, default=None, required=True, help='specify the dataset config for training')
     parser.add_argument('--fix_random_seed', action='store_true', default=False, help='')
     # save path
@@ -49,11 +49,18 @@ def parse_config():
     parser.add_argument('--onnx_file', type=str, default=None, help='Optional: ONNX file name for evaluation')
     parser.add_argument('--lr', type=float, default=None, help='Optional: Specify learning rate to override the config learning rate')
     parser.add_argument('--amp', type=str, default=None, help='Optional: true/false to override AMP setting in config')
+    parser.add_argument('--trt_onnx_list', type=str, nargs='*', default=None, help='List of ONNX files for TRT')
+    # add node id
+    parser.add_argument('--node_id', type=str, default=None, help='node id name')
     # parser.add_argument('--')
 
     args = parser.parse_args()
-    yaml_config = config_loader(args.cfg_file)
-    cfgs = EasyDict(yaml_config)
+
+    if args.cfg_file is not None:
+        yaml_config = config_loader(args.cfg_file)
+        cfgs = EasyDict(yaml_config)
+    else:
+        cfgs = EasyDict()
 
     if args.overide_epoch is not None: # back compatibility for typo
         args.override_epoch = args.overide_epoch
@@ -120,8 +127,18 @@ def parse_config():
         exp_dataset_dir = unique_dataset_names[0]
     else:
         exp_dataset_dir = 'MultiDataset'
-    args.exp_group_path = os.path.join(exp_dataset_dir, cfgs.MODEL.NAME)
-    args.tag = os.path.basename(args.cfg_file)[:-5]
+
+    if hasattr(cfgs, 'MODEL') and hasattr(cfgs.MODEL, 'NAME'):
+        args.exp_group_path = os.path.join(exp_dataset_dir, cfgs.MODEL.NAME)
+    else:
+        args.exp_group_path = os.path.join(exp_dataset_dir, 'benchmarking')
+
+
+    if args.cfg_file is not None:
+        args.tag = os.path.basename(args.cfg_file)[:-5]
+    else:
+        args.tag = 'emptyTag'
+    
     message = f"Experiment group path: {args.exp_group_path}, tag: {args.tag}"
     print(message)
 

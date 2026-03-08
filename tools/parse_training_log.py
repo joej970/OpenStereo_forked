@@ -232,52 +232,19 @@ def create_plots(data, output_dir, job_id, experiment_id):
         if 'evaluation' in epoch_data:
             eval_epochs.append(epoch)
             eval_epes.append(epoch_data['evaluation'].get('epe', np.nan))
+
+    common_utils.draw_train_loss_lr(
+        output_dir, job_id, f"{experiment_id}_postproc", 
+        train_epochs = epochs,
+        train_losses = train_losses,
+        train_lrs = train_lrs
+    )
+    common_utils.draw_eval_epe(
+        output_dir, job_id, f"{experiment_id}_postproc", 
+        eval_epochs = eval_epochs,
+        eval_epes = eval_epes
+    )
     
-    # Plot 1: Training Loss and Learning Rate
-    fig, ax1 = plt.subplots(figsize=(12, 6))
-    
-    # Loss on left axis
-    color = 'tab:red'
-    ax1.set_xlabel('Epoch')
-    ax1.set_ylabel('Average Loss', color=color)
-    ax1.plot(epochs, train_losses, color=color, marker='o', label='Training Loss')
-    ax1.tick_params(axis='y', labelcolor=color)
-    ax1.grid(True, alpha=0.3)
-    
-    # Set y-axis limit for loss to 1.5 times the second epoch value (epoch 1)
-    if len(train_losses) > 1 and not np.isnan(train_losses[1]) and train_losses[1] > 0:
-        max_loss_display = 1.5 * train_losses[1]
-        ax1.set_ylim(bottom=0, top=max_loss_display)
-    
-    # Learning rate on right axis
-    ax2 = ax1.twinx()
-    color = 'tab:blue'
-    ax2.set_ylabel('Learning Rate', color=color)
-    ax2.plot(epochs, train_lrs, color=color, marker='s', label='Learning Rate')
-    ax2.tick_params(axis='y', labelcolor=color)
-    ax2.set_yscale('log')  # Log scale for LR
-    
-    plt.title(f'Training Progress: Loss and Learning Rate (Job {job_id}, Exp {experiment_id})')
-    plt.tight_layout()
-    plt.savefig(output_dir / f'{job_id}_{experiment_id}_training_progress.png', dpi=300, bbox_inches='tight')
-    plt.close()
-    
-    # Plot 2: Evaluation EPE
-    if eval_epes:
-        plt.figure(figsize=(10, 6))
-        plt.plot(eval_epochs, eval_epes, color='tab:green', marker='o', linewidth=2)
-        plt.xlabel('Epoch')
-        plt.ylabel('EPE (End Point Error)')
-        plt.title(f'Evaluation EPE Over Training (Job {job_id}, Exp {experiment_id})')
-        plt.grid(True, alpha=0.3)
-        plt.tight_layout()
-        plt.savefig(output_dir / f'{job_id}_{experiment_id}_evaluation_epe.png', dpi=300, bbox_inches='tight')
-        plt.close()
-    
-    print(f"Plots saved to {output_dir}")
-    print(f"  - {job_id}_{experiment_id}_training_progress.png")
-    if eval_epes:
-        print(f"  - {job_id}_{experiment_id}_evaluation_epe.png")
 
 
 def parse_tensorrt_json(json_filepath):
@@ -423,6 +390,7 @@ def do_log_parsing(filename, json_filename=None):
     summary_lines.append("="*50)
     summary_lines.append(f"Job ID: {job_id}")
     summary_lines.append(f"Experiment ID: {experiment_id}")
+    concentrated_line = f"{experiment_id},{job_id}"
     
     if data['model_info']['gflops'] != -1:
         summary_lines.append(f"Model GFLOPs: {data['model_info']['gflops']:.2f}")
@@ -430,6 +398,7 @@ def do_log_parsing(filename, json_filename=None):
         summary_lines.append(f"Model Parameters: {data['model_info']['parameters_m']:.2f}M")
     
     summary_lines.append(f"Epochs parsed: {len(data['epochs'])}")
+    concentrated_line = f"{concentrated_line},{len(data['epochs'])}"
     
     # Show evaluation EPE progress (best and final evaluation during training)
     epochs = sorted(data['epochs'].keys())
@@ -443,6 +412,8 @@ def do_log_parsing(filename, json_filename=None):
         final_eval_epe = eval_epes[-1] if eval_epes else None
         summary_lines.append(f"Best evaluation EPE: {best_eval_epe:.4f}")
         summary_lines.append(f"Final evaluation EPE: {final_eval_epe:.4f}")
+        concentrated_line = f"{concentrated_line},{best_eval_epe:.4f}"
+        
     
     # Show best epoch information (if available)
     if data['best_epoch']['idx'] != -1 and data['best_epoch']['epe'] != -1:
@@ -455,6 +426,9 @@ def do_log_parsing(filename, json_filename=None):
         final_metrics = data['final_testing']['metrics']
         if 'epe' in final_metrics:
             summary_lines.append(f"Final testing EPE: {final_metrics['epe']:.4f}")
+            concentrated_line = f"{concentrated_line},{final_metrics['epe']:.4f}"
+        else:
+            concentrated_line = f"{concentrated_line},"
         if 'd1_all' in final_metrics:
             summary_lines.append(f"Final testing D1-all: {final_metrics['d1_all']:.4f}%")
     
@@ -482,21 +456,23 @@ def do_log_parsing(filename, json_filename=None):
 
                 # t = f"(run {run_t})" if len(trt_data) > 1 else "" 
         # trt_data = data['tensorrt_benchmark']
-                trt_data = sess_trt_data[run_trt_data]
+                trt_data = run_trt_data
                 print(f"DEBUG: trt_data: {trt_data}")
 
                 summary_lines.append("")  # Add blank line for separation
                 summary_lines.append(f"TensorRT Benchmark {sess_t}|{run_t}:")
                 
-                if 'inference_throughput' in trt_data:
-                    summary_lines.append(f"  Inference throughput {sess_t}|{run_t}: {trt_data['inference_throughput']:.2f} inferences/sec")
-                else:
-                    summary_lines.append(f"  Inference throughput {sess_t}|{run_t}: -1")
-                
                 if 'trt_epe' in trt_data:
                     summary_lines.append(f"  TensorRT EPE {sess_t}|{run_t}: {trt_data['trt_epe']:.4f}")
+                    concentrated_line = f"{concentrated_line},{trt_data['trt_epe']:.4f}"
                 else:
                     summary_lines.append(f"  TensorRT EPE {sess_t}|{run_t}: -1")
+
+                if 'inference_throughput' in trt_data:
+                    summary_lines.append(f"  Inference throughput {sess_t}|{run_t}: {trt_data['inference_throughput']:.2f} inferences/sec")
+                    concentrated_line = f"{concentrated_line},{trt_data['inference_throughput']:.2f}"
+                else:
+                    summary_lines.append(f"  Inference throughput {sess_t}|{run_t}: -1")
 
                 if 'engine_footprint_mb' in trt_data:
                     summary_lines.append(f"  Engine footprint {sess_t}|{run_t}: {trt_data['engine_footprint_mb']:.2f} MB")
@@ -511,6 +487,8 @@ def do_log_parsing(filename, json_filename=None):
         print(f"No TensorRT benchmark data found in {data}")
 
     # Join all summary lines
+    print(f"{concentrated_line}")
+    summary_lines.append(concentrated_line)
     summary_text = "\n".join(summary_lines)
     
     # Print summary to console

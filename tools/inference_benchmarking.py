@@ -37,9 +37,12 @@ class CustomProfiler(trt.IProfiler):
 class TRTBenchmark:
     def __init__(self, onnx_path, fp16=True, workspace_size_gb=4, data_loader=None, cfgs=None):
         if not os.path.exists(onnx_path):
+            print(f"TRTBenchmark::ONNX file not found: {onnx_path}")
             raise FileNotFoundError(f"ONNX file not found: {onnx_path}")
         self.onnx_path = onnx_path
+        print(f"Initializing TRTBenchmark with ONNX model: {onnx_path}")
         self.logger = trt.Logger(trt.Logger.INFO)
+        print("Initialized TensorRT logger.")
         self.fp16 = fp16
         self.workspace_size = workspace_size_gb << 30  # GB → bytes
         self.engine = None
@@ -47,27 +50,50 @@ class TRTBenchmark:
         self.bindings = []
         self.inputs = []
         self.outputs = []
+        print("Allocating CUDA stream...")
         self.stream = cuda.Stream()
+        print("CUDA stream allocated.")
         self.data_loader = data_loader  # Optional, for inference data preparation
         self.cfgs = cfgs  # Optional, for testing configurations
         self.output_binding_index = None
         self.memory_snapshots = []
         # Capture baseline memory before any TensorRT operations
+        print(f"GPU memory info: {self.get_gpu_memory_info()}")
         self.memory_snapshots.append(('before_engine_creation', self.get_gpu_memory_info()))
 
+        print("Creating CUDA events for timing...")
+        self.start_event = cuda.Event()
+        self.end_event = cuda.Event()
+        print("CUDA events created.")
+
     def build_engine(self):
+        print(f"build_engine():: Building TensorRT engine.")
         builder = trt.Builder(self.logger)
+        print(f"build_engine():: checkpoint 1")
         network_flags = 1 << int(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH)
+        print(f"build_engine():: checkpoint 2")
         network = builder.create_network(network_flags)
+        print(f"build_engine():: checkpoint 3")
         parser = trt.OnnxParser(network, self.logger)
+        print(f"build_engine():: checkpoint 4")
 
         with open(self.onnx_path, "rb") as f:
-            if not parser.parse(f.read()):
+            print(f"build_engine():: checkpoint 5")
+            content = f.read()
+            print(f"build_engine():: checkpoint 5.1: content size={len(content)} bytes")
+            parsed = parser.parse(content)
+            print(f"build_engine():: checkpoint 5.2: parsed={parsed}")
+
+            if not parsed:
+            # if not parser.parse(f.read()):
+                print(f"build_engine():: checkpoint 5.3")
                 # Enhanced error reporting
                 error_msg = "Failed to parse ONNX model. Detailed errors:\n"
                 num_errors = parser.num_errors
                 error_msg += f"Number of errors: {num_errors}\n"
                 
+                print(f"build_engine():: checkpoint 5.3.1: error_msg partially error_msg: {error_msg}.") 
+
                 for i in range(num_errors):
                     error = parser.get_error(i)
                     error_msg += f"  Error {i+1}:\n"
@@ -83,21 +109,33 @@ class TRTBenchmark:
                 print(error_msg)
                 
                 raise RuntimeError(error_msg)
+            print(f"build_engine():: checkpoint 5.4: ONNX model parsed successfully.")
 
         # with open(self.onnx_path, "rb") as f:
         #     if not parser.parse(f.read()):
         #         raise RuntimeError("Failed to parse ONNX model")
 
+        print(f"build_engine():: checkpoint 6")
         config = builder.create_builder_config()
-        config.max_workspace_size = self.workspace_size
+        print(f"build_engine():: checkpoint 7: setting workspace size to {self.workspace_size} bytes")
+        # config.max_workspace_size = self.workspace_size
+        config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE, self.workspace_size)
+        print(f"build_engine():: checkpoint 8")
+
         if self.fp16:
+            print(f"build_engine():: checkpoint 9: enabling FP16 mode")
             config.set_flag(trt.BuilderFlag.FP16)
 
+            print(f"build_engine():: checkpoint 10: building engine")
         self.engine = builder.build_engine(network, config)
+        print(f"build_engine():: checkpoint 11: engine built")
         if self.engine is None:
             raise RuntimeError("Engine build failed")
 
+    
+        print(f"build_engine():: checkpoint 12: creating execution context")
         self.context = self.engine.create_execution_context()
+        print(f"build_engine():: checkpoint 13: execution context created")
 
         # Find the output binding index
         for i in range(self.engine.num_bindings):
@@ -110,10 +148,58 @@ class TRTBenchmark:
         if self.output_binding_index is None:
             raise ValueError("Could not find output binding 'disp_pred' in TensorRT engine")
 
+        print(f"build_engine():: checkpoint 14: allocating buffers")
         self._allocate_buffers()
+        print(f"build_engine():: checkpoint 15: buffers allocated")
 
         # Capture memory after engine creation
         self.memory_snapshots.append(('after_engine_creation', self.get_gpu_memory_info()))
+        print(f"build_engine():: checkpoint 16: memory snapshot taken: {self.get_gpu_memory_info()}")
+
+    def cleanup(self):
+        # Free device memory
+        for _, _, device_mem, _ in self.inputs:
+            try:
+                print("Freeing input device memory...")
+                device_mem.free()
+            except Exception:
+                pass
+        for _, _, device_mem, _ in self.outputs:
+            try:
+                print("Freeing output device memory...")
+                device_mem.free()
+            except Exception:
+                pass
+
+        # Free stream and events
+        try:
+            if hasattr(self, 'stream') and self.stream is not None:
+                print("Freeing CUDA stream...")
+                del self.stream
+        except Exception:
+            pass
+        try:
+            if hasattr(self, 'start_event') and self.start_event is not None:
+                print("Freeing start CUDA event...")
+                del self.start_event
+            if hasattr(self, 'end_event') and self.end_event is not None:
+                print("Freeing end CUDA event...")
+                del self.end_event
+        except Exception:
+            pass
+
+        # Destroy engine and context
+        try:
+            if self.context is not None:
+                del self.context
+            if self.engine is not None:
+                del self.engine
+        except Exception:
+            pass
+
+    # Force garbage collection
+    import gc
+    gc.collect()
 
     def get_gpu_memory_info(self):
         """Get current GPU memory usage."""
@@ -186,21 +272,32 @@ class TRTBenchmark:
         inference_memories = []
         self._prepare_dummy_inputs()
         times = []
+        before_inference = self.get_gpu_memory_info()
+
         for i in range(runs):
-            before_inference = self.get_gpu_memory_info()
-        
-            start = time.perf_counter()
+            # Start CUDA event for GPU timing
+            self.start_event.record(self.stream)
+
+            # Execute inference
             self.context.execute_async_v2(bindings=self.bindings, stream_handle=self.stream.handle)
             self.stream.synchronize()
-            times.append((time.perf_counter() - start) * 1000)
 
-            after_inference = self.get_gpu_memory_info()
-            inference_memories.append(after_inference['used_mb'])
+            # End CUDA event for GPU timing
+            self.end_event.record(self.stream)
+            self.end_event.synchronize()
 
-            if i == 0:  # Record first run details
-                self.memory_snapshots.append(('before_first_inference', before_inference))
-                self.memory_snapshots.append(('after_first_inference', after_inference))
+            # Measure the elapsed time
+            # elapsed_time = self.start_event.time_since(self.end_event)  # In milliseconds
+            elapsed_time = self.end_event.time_since(self.start_event)  # In milliseconds
+            times.append(elapsed_time)
 
+        after_inference = self.get_gpu_memory_info()
+        inference_memories.append(after_inference['used_mb'])
+
+        self.memory_snapshots.append(('before_first_inference', before_inference))
+        self.memory_snapshots.append(('after_first_inference', after_inference))
+
+        # after moving the code, this does not make sense anymore but keep it for report parsing
         memory_stats = {
             'mem_mb_mean': np.mean(inference_memories),
             'mem_mb_std': np.std(inference_memories),
@@ -494,21 +591,48 @@ def onnx_profile(onnx_path, shape, provider='CUDAExecutionProvider', iters=200, 
         print(f"{name:40s} {ms:8.3f}")
     return throughput, profile_path
 
-def trt_benchmark(onnx_filename, csv_filename = None, fp16=True, data_loader=None, cfgs=None):
+def trt_build_engine(onnx_filename, csv_filename = None, fp16=True, data_loader=None, cfgs=None):
+    print(f"Building TRTBenchmark for ONNX model.")
+    bench = TRTBenchmark(onnx_filename, fp16=fp16, data_loader=data_loader, cfgs=cfgs)
+    print("Initisialized TRTBenchmark.")
+    bench.build_engine()
+    print("Built TensorRT engine.")
+    bench.warmup(iterations=50)
+    print("Completed warmup.")
+
+    if csv_filename is not None:
+        print(f"Starting layer profiling on TensorRT engine, saving to {csv_filename}...")
+        bench.profile_layers(top_n=100, profile_file=csv_filename)
+        print("Completed layer profiling.")
+
+    return bench
+
+def trt_benchmark(bench: TRTBenchmark):
     """
     Convenience function to benchmark an ONNX model using TensorRT.
     Builds the engine, warms up, runs timing, and prints latency.
     """
-    bench = TRTBenchmark(onnx_filename, fp16=fp16, data_loader=data_loader, cfgs=cfgs)
-    bench.build_engine()
+
     engine_footprint = bench.get_engine_memory_footprint()
     bench.warmup(iterations=50)
     avg, p95, memory_inference_stats = bench.benchmark(runs=500)
     ips = 1000 / avg
-    if csv_filename is not None:
-        bench.profile_layers(top_n=100, profile_file=csv_filename)
+
     print(f"Average latency: {avg:.3f} ms")
     print(f"p95 latency: {p95:.3f} ms")
     print(f"Iterations per second: {ips:.2f} inferences/sec.")
+
+    if 'bench.engine.num_bindings' in locals(): 
+        if bench.engine is not None:
+            for i in range(bench.engine.num_bindings):
+                if bench.engine.binding_is_input(i):
+                    name = bench.engine.get_binding_name(i)
+                    shape = bench.context.get_binding_shape(i)
+                    print(f"Input '{name}' shape: {shape}")
+        else:
+            print("Engine is None, cannot display input shapes.")
+    else:
+        print("Engine not among local variables; cannot display input shapes.")
+        
     acc_results = bench.test_on_real_data_trt()
     return avg, p95, ips, acc_results, engine_footprint, memory_inference_stats

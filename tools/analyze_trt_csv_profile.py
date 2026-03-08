@@ -172,6 +172,7 @@ def print_nested_summary(nested_dict, indent=0):
 def analyze_trt_csv_profile(csv_file):
     """
     Analyze TensorRT CSV profile and print top layers and stage time breakdown.
+    Combines nested nodes together using re.search().
     Args:
         csv_file (str): Path to the CSV file.
     Returns:
@@ -187,6 +188,13 @@ def analyze_trt_csv_profile(csv_file):
 
     # 2. Define stage mapping based on regex
     def get_stage(name):
+        # LeanBackbone stages
+        if re.search(r'/base_model/feature_extraction', name):
+            return "bb_feat_ext"
+        # IINet stages
+        if re.search(r'/base_model/matching_model', name):
+            return "bb_match_model"
+        # OneStereo (LightStereo) stages
         if re.search(r'/base_model/stem_2', name):
             return "stem_2"
         if re.search(r'/base_model/backbone/conv_stem', name):
