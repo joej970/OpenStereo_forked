@@ -35,7 +35,7 @@ DATA_CONFIG:
             - { NAME: NormalizeImage, MEAN: [ 0.485, 0.456, 0.406 ], STD: [ 0.229, 0.224, 0.225 ] }
 
 OPTIMIZATION:
-    NUM_EPOCHS: 20 # overrides model config
+    NUM_EPOCHS: 40 # overrides model config
     # NUM_EPOCHS_IINET: 105 # overrides model config
     # NUM_EPOCHS_LEANSTEREO: 320 # overrides model config
     # NUM_EPOCHS_LIGHTSTEREO: 90 # overrides model config
@@ -51,6 +51,7 @@ TRAINER:
     SAVE_ERROR_MAP_LIST: 
         - /d/hpc/home/zr1677/datasets/sceneflow/driving_finalpass/driving__frames_finalpass_webp/frames_finalpass_webp/15mm_focallength/scene_backwards/fast/left/0001.webp
         - /d/hpc/home/zr1677/datasets/sceneflow/driving_finalpass/driving__frames_finalpass_webp/frames_finalpass_webp/15mm_focallength/scene_backwards/fast/left/0002.webp
+        - /d/hpc/home/zr1677/datasets/sceneflow/driving_finalpass/driving__frames_finalpass_webp/frames_finalpass_webp/15mm_focallength/scene_forwards/fast/left/0030.webp
         - /d/hpc/home/zr1677/datasets/sceneflow/flyingthings3d/frames_finalpass/TEST/C/0134/left/0008.png
         - /d/hpc/home/zr1677/datasets/sceneflow/flyingthings3d/frames_finalpass/TEST/C/0134/left/0009.png
         - /d/hpc/home/zr1677/datasets/sceneflow/flyingthings3d/frames_finalpass/TEST/C/0134/left/0007.png
@@ -64,6 +65,7 @@ TRAINER:
         - /d/hpc/home/zr1677/datasets/sceneflow/flyingthings3d/frames_finalpass/TEST/C/0036/left/0006.png
         - /d/hpc/home/zr1677/datasets/sceneflow/flyingthings3d/frames_finalpass/TEST/C/0036/left/0010.png
         - /d/hpc/home/zr1677/datasets/sceneflow/flyingthings3d/frames_finalpass/TEST/C/0061/left/0008.png
+        - /d/hpc/home/zr1677/datasets/sceneflow/driving_finalpass/driving__frames_finalpass_webp/frames_finalpass_webp/15mm_focallength/scene_forwards/fast/left/0030.webp
     
 
 

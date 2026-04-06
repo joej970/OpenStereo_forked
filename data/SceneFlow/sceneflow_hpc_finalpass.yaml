@@ -39,8 +39,9 @@ OPTIMIZATION:
     # NUM_EPOCHS_IINET: 0 # this ensures testing only
     # NUM_EPOCHS_IINET: 30 # overrides model config: train from zero all configs
     NUM_EPOCHS_IINET: 105 # overrides model config: train from zero all configs
+    # NUM_EPOCHS_IINET: 60 # overrides model config: train from zero all configs
     # NUM_EPOCHS_LEANSTEREO: 40 # overrides model config: now continue 63688460 to see if it still converges
-    NUM_EPOCHS_LEANSTEREO: 40 # overrides model config: now continue 63688460 to see if it still converges
+    NUM_EPOCHS_LEANSTEREO: 80 # overrides model config: now continue 63688460 to see if it still converges
     NUM_EPOCHS_LIGHTSTEREO: 90 # overrides model config: train from zero all configs
     # original settings
     # NUM_EPOCHS_IINET: 105 # overrides model config
