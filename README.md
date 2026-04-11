@@ -20,7 +20,7 @@ When deployed via ONNX and TensorRT on a consumer-grade GPU, our single-pass ext
 
 ## The implementation:
 
-[OpenStereo_forked/stereo/modeling/models/LeanStereo/FeatExtractionWrapper.py](OpenStereo_forked/stereo/modeling/models/LeanStereo/FeatExtractionWrapper.py) contains the implementation of our method. Based on the model configuration setting     
+[OpenStereo_DoItOnce/stereo/modeling/models/LeanStereo/FeatExtractionWrapper.py](OpenStereo_DoItOnce/stereo/modeling/models/LeanStereo/FeatExtractionWrapper.py) contains the implementation of our method. Based on the model configuration setting     
 
 ```
 BACKBONE_CFGS: 
@@ -31,7 +31,7 @@ BACKBONE_CFGS:
 different implementation of the forward() method is used. 
 
 ## Dataset configuration
-[OpenStereo_forked/data/SceneFlow/sceneflow_hpc_finalpass.yaml](OpenStereo_forked/data/SceneFlow/sceneflow_hpc_finalpass.yaml):
+[OpenStereo_DoItOnce/data/SceneFlow/sceneflow_hpc_finalpass.yaml](OpenStereo_DoItOnce/data/SceneFlow/sceneflow_hpc_finalpass.yaml):
 
 ### Specify training samples
 The dataset configuration file specifies location of .txt file containing a list of all samples. Example .txt file:
@@ -82,7 +82,7 @@ If this sample is also specified in the .txt file containing samples and ```TEST
 
 
 ## Model configuration file (.yaml)
-[OpenStereo_forked/cfgs/LeanStereo/300a_LeanStereo_sceneflow.yaml](OpenStereo_forked/cfgs/LeanStereo/300a_LeanStereo_sceneflow.yaml):
+[OpenStereo_DoItOnce/cfgs/LeanStereo/300a_LeanStereo_sceneflow.yaml](OpenStereo_DoItOnce/cfgs/LeanStereo/300a_LeanStereo_sceneflow.yaml):
 
 This .yaml is used to configure model. Most of the parameteres are related to a specific model, while other are related to the training configuration. Some more specific ones are:
 
@@ -92,7 +92,7 @@ MODEL:
     # CKPT: -1 # default; starts training from beggining
     CKPT_DIR: ''
 
-    CKPT_DIR: '/d/hpc/home/<user>/OpenStereo_forked/output/SceneFlowDataset/LeanStereo/300_LeanStereo_sceneflow/300_exp_300_half_65200718/ckpt/' # checkpoint location; contains checkpoint_epoch_78.pth, best_model.pth, 
+    CKPT_DIR: '/d/hpc/home/<user>/OpenStereo_DoItOnce/output/SceneFlowDataset/LeanStereo/300_LeanStereo_sceneflow/300_exp_300_half_65200718/ckpt/' # checkpoint location; contains checkpoint_epoch_78.pth, best_model.pth, 
     CKPT: 39 # in case training is done in several stages, this can be used to resume from a checkpoint (loads checkpoint_epoch_<nr>.pth)
 
     BACKBONE_CFGS: 
@@ -112,7 +112,7 @@ OPTIMIZATION:
 ### How to use (if using HPC and slurm management and job scheduling system)
 If using slurm to launch processes, refer to our example slurm script to train, evaluate using TensorRT and parse detailed training logs into a single more succinct log.
 
-Example slurm script: [OpenStereo_forked/slurm_training/300_half_train_v100s_wn.slurm](OpenStereo_forked/slurm_training/300_half_train_v100s_wn.slurm).
+Example slurm script: [OpenStereo_DoItOnce/slurm_training/300_half_train_v100s_wn.slurm](OpenStereo_DoItOnce/slurm_training/300_half_train_v100s_wn.slurm).
 
 ### If not using slurm
 Call the same command as specified in the above mentioned slurm script:

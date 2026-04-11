@@ -13,8 +13,12 @@ MODEL:
 
 
     # CKPT: -1
-    CKPT: 39
-    CKPT_DIR: '/d/hpc/home/zr1677/OpenStereo_forked/output/SceneFlowDataset/LeanStereo/300a_LeanStereo_sceneflow/300a_exp_300a_half_64608131/ckpt/'
+
+    CKPT: 79
+    CKPT_DIR: '/d/hpc/home/zr1677/OpenStereo_DoItOnce/output/SceneFlowDataset/LeanStereo/300a_LeanStereo_sceneflow/300a_exp_300a_half_65082939/ckpt/'
+
+
+
     PRETRAINED_MODEL: ''
     BACKBONE_CFGS: 
         CONCAT_LEFT_RIGHT: true # concatenates left and right images along batch before feeding to backbone

@@ -12,9 +12,9 @@ MODEL:
     LOSS_TYPE: "LogL1Loss"  # "huber" or "smoothL1" or "l2" or "LogL1Loss" or "LogL1Loss_v2"
 
 
-    CKPT: -1
-    # CKPT: 39
-    # CKPT_DIR: ''
+    # CKPT: -1
+    CKPT: 39
+    CKPT_DIR: '/d/hpc/home/zr1677/OpenStereo_DoItOnce/output/SceneFlowDataset/LeanStereo/300d_LeanStereo_sceneflow/300d_exp_300d_half_65200407/ckpt/'
     
     PRETRAINED_MODEL: ''
     BACKBONE_CFGS: 

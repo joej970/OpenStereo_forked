@@ -12,16 +12,18 @@ MODEL:
     LOSS_TYPE: "LogL1Loss"  # "huber" or "smoothL1" or "l2" or "LogL1Loss" or "LogL1Loss_v2"
 
 # 
-    CKPT: -1
+    # CKPT: -1
     PRETRAINED_MODEL: ''
 
-    # CKPT: 39
-    # CKPT_DIR: '/d/hpc/home/zr1677/OpenStereo_forked/output/SceneFlowDataset/LeanStereo/300_LeanStereo_sceneflow/300_exp_300_half_64636001/ckpt/'
+    CKPT: 39
+    CKPT_DIR: '/d/hpc/home/zr1677/OpenStereo_DoItOnce/output/SceneFlowDataset/LeanStereo/300_LeanStereo_sceneflow/300_exp_300_half_65200718/ckpt/'
 
+    ### Study for different backbones and cost volume types, not applicable for feature extraction study
     # BACKBONE: mobilenetv3_small_100
     # BACKBONE_PRETRAINED: True
     # COST_VOLUME_TYPE: SIMPLE_3D
 
+    ### LightFusion settings, not applicable for feature extraction study
     # ADDITIONAL_DEPTH_SRC: true
     # FUSION_TYPE: "addition" # multiplication, concat
     # FUSION_CONVS: 2
@@ -32,10 +34,9 @@ OPTIMIZATION:
     FREEZE_BN: false
     SYNC_BN: true
     AMP: false
-    # AMP_ENABLED_AFTER_EPOCH: 10
     BATCH_SIZE_PER_GPU: &bs 8
-    # our approach
-    # NUM_EPOCHS: 90
+    OPTI_REINIT: true # in case of loading from a checkpoint, reinitialize the optimizer to follow new opt. configs
+
 
     # original
     NUM_EPOCHS: 320

@@ -27,19 +27,21 @@ MODEL:
 
     REGRESSION_TOPK: 2
     FIND_UNUSED_PARAMETERS: true
-    # CKPT: -1
+    CKPT: -1
     
     # CKPT: 29
-    # CKPT_DIR: '/d/hpc/home/zr1677/OpenStereo_forked/output/SceneFlowDataset/IINet/350d_iinet_sceneflow_default/350d_exp_350d_half_64505962/ckpt/'
+    # CKPT_DIR: '/d/hpc/home/zr1677/OpenStereo_DoItOnce/output/SceneFlowDataset/IINet/350d_iinet_sceneflow_default/350d_exp_350d_half_64505962/ckpt/'
 
-    CKPT: 59
-    CKPT_DIR: '/d/hpc/home/zr1677/OpenStereo_forked/output/SceneFlowDataset/IINet/350d_iinet_sceneflow_default/350d_exp_350d_half_64705048/ckpt/'
+    # CKPT: 59
+    # CKPT_DIR: '/d/hpc/home/zr1677/OpenStereo_DoItOnce/output/SceneFlowDataset/IINet/350d_iinet_sceneflow_default/350d_exp_350d_half_64705048/ckpt/'
 
     PRETRAINED_MODEL: ''
-    # PRETRAINED_MODEL: '/d/hpc/home/zr1677/OpenStereo_forked/output/SceneFlowDataset/IINet/350d_iinet_sceneflow_default/350d_exp_350d_half_64505962/ckpt/best_model.pth'
+    # PRETRAINED_MODEL: '/d/hpc/home/zr1677/OpenStereo_DoItOnce/output/SceneFlowDataset/IINet/350d_iinet_sceneflow_default/350d_exp_350d_half_64505962/ckpt/best_model.pth'
 
 OPTIMIZATION:
-    BATCH_SIZE_PER_GPU: &bs 16
+    # BATCH_SIZE_PER_GPU: &bs 16
+    # BATCH_SIZE_PER_GPU: &bs 12
+    BATCH_SIZE_PER_GPU: &bs 15
     FREEZE_BN: false
     SYNC_BN: false
     AMP: false
@@ -51,13 +53,19 @@ OPTIMIZATION:
         NAME: AdamW
         LR: 0.001
         WEIGHT_DECAY: 0
-        EPS: 1.0e-7
+        EPS: 1.0e-6
 
     SCHEDULER:
         NAME: MultiStepLR
         GAMMA: 0.5
         MILESTONES: [ 7, 12, 15, 20, 30, 50, 70, 85, 95, 100 ]
         ON_EPOCH: True
+
+        
+    CLIP_GRAD:
+        TYPE: norm
+        NORM_TYPE: 2
+        MAX_NORM: 2.0
 
 EVALUATOR:
     BATCH_SIZE_PER_GPU: 10

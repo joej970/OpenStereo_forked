@@ -10,7 +10,7 @@ MODEL:
     FIND_UNUSED_PARAMETERS: false
     # CKPT: -1
     CKPT: 29
-    CKPT_DIR: '/d/hpc/home/zr1677/OpenStereo_forked/output/SceneFlowDataset/oneStereo/40d_one_stereo_s_sceneflow_lightstereo_MobNetV2_default/40d_exp_40d_half_64313667/ckpt/'
+    CKPT_DIR: '/d/hpc/home/zr1677/OpenStereo_DoItOnce/output/SceneFlowDataset/oneStereo/40d_one_stereo_s_sceneflow_lightstereo_MobNetV2_default/40d_exp_40d_half_64313667/ckpt/'
     
     PRETRAINED_MODEL: ''
     BACKBONE: MobileNetv2

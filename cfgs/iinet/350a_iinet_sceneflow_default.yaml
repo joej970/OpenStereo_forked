@@ -26,13 +26,13 @@ MODEL:
     # CKPT: -1
 
     # CKPT: 29
-    # CKPT_DIR: '/d/hpc/home/zr1677/OpenStereo_forked/output/SceneFlowDataset/IINet/350a_iinet_sceneflow_default/350a_exp_350a_half_64461188/ckpt/'
+    # CKPT_DIR: '/d/hpc/home/zr1677/OpenStereo_DoItOnce/output/SceneFlowDataset/IINet/350a_iinet_sceneflow_default/350a_exp_350a_half_64461188/ckpt/'
 
     CKPT: 59
-    CKPT_DIR: '/d/hpc/home/zr1677/OpenStereo_forked/output/SceneFlowDataset/IINet/350a_iinet_sceneflow_default/350a_exp_350a_half_64705045/ckpt/'
+    CKPT_DIR: '/d/hpc/home/zr1677/OpenStereo_DoItOnce/output/SceneFlowDataset/IINet/350a_iinet_sceneflow_default/350a_exp_350a_half_65110455/ckpt/'
 
     PRETRAINED_MODEL: ''
-    # PRETRAINED_MODEL: '/d/hpc/home/zr1677/OpenStereo_forked/output/SceneFlowDataset/IINet/350a_iinet_sceneflow_default/350a_exp_350a_half_64461188/ckpt/best_model.pth'
+    # PRETRAINED_MODEL: '/d/hpc/home/zr1677/OpenStereo_DoItOnce/output/SceneFlowDataset/IINet/350a_iinet_sceneflow_default/350a_exp_350a_half_64461188/ckpt/best_model.pth'
 
 OPTIMIZATION:
     BATCH_SIZE_PER_GPU: &bs 16
@@ -47,7 +47,7 @@ OPTIMIZATION:
         NAME: AdamW
         LR: 0.001
         WEIGHT_DECAY: 0
-        # EPS: 1.0e-6
+        EPS: 1.0e-6
 
 
     SCHEDULER:

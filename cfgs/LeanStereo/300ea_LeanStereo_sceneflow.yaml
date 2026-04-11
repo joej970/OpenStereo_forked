@@ -13,7 +13,7 @@ MODEL:
 
 
     CKPT: 39
-    CKPT_DIR: '/d/hpc/home/zr1677/OpenStereo_forked/output/SceneFlowDataset/LeanStereo/300ea_LeanStereo_sceneflow/300ea_exp_300ea_half_64608136/ckpt/'
+    CKPT_DIR: '/d/hpc/home/zr1677/OpenStereo_DoItOnce/output/SceneFlowDataset/LeanStereo/300ea_LeanStereo_sceneflow/300ea_exp_300ea_half_64608136/ckpt/'
 
     PRETRAINED_MODEL: ''
     BACKBONE_CFGS: 

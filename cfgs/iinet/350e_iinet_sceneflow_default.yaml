@@ -29,13 +29,13 @@ MODEL:
     # CKPT: -1
 
     # CKPT: 29
-    # CKPT_DIR: '/d/hpc/home/zr1677/OpenStereo_forked/output/SceneFlowDataset/IINet/350e_iinet_sceneflow_default/350e_exp_350e_half_64505963/ckpt/'
+    # CKPT_DIR: '/d/hpc/home/zr1677/OpenStereo_DoItOnce/output/SceneFlowDataset/IINet/350e_iinet_sceneflow_default/350e_exp_350e_half_64505963/ckpt/'
 
     CKPT: 59
-    CKPT_DIR: '/d/hpc/home/zr1677/OpenStereo_forked/output/SceneFlowDataset/IINet/350e_iinet_sceneflow_default/350e_exp_350e_half_64705049/ckpt/'
+    CKPT_DIR: '/d/hpc/home/zr1677/OpenStereo_DoItOnce/output/SceneFlowDataset/IINet/350e_iinet_sceneflow_default/350e_exp_350e_half_65199542/ckpt/'
 
     PRETRAINED_MODEL: ''
-    # PRETRAINED_MODEL: '/d/hpc/home/zr1677/OpenStereo_forked/output/SceneFlowDataset/IINet/350e_iinet_sceneflow_default/350e_exp_350e_half_64505963/ckpt/best_model.pth'
+    # PRETRAINED_MODEL: '/d/hpc/home/zr1677/OpenStereo_DoItOnce/output/SceneFlowDataset/IINet/350e_iinet_sceneflow_default/350e_exp_350e_half_64505963/ckpt/best_model.pth'
 
 OPTIMIZATION:
     BATCH_SIZE_PER_GPU: &bs 16
@@ -50,13 +50,19 @@ OPTIMIZATION:
         NAME: AdamW
         LR: 0.001
         WEIGHT_DECAY: 0
-        EPS: 1.0e-5
+        EPS: 1.0e-6
 
     SCHEDULER:
         NAME: MultiStepLR
         GAMMA: 0.5
         MILESTONES: [ 7, 12, 15, 20, 30, 50, 70, 85, 95, 100 ]
         ON_EPOCH: True
+
+        
+    CLIP_GRAD:
+        TYPE: norm
+        NORM_TYPE: 2
+        MAX_NORM: 2.0
 
 EVALUATOR:
     BATCH_SIZE_PER_GPU: 10

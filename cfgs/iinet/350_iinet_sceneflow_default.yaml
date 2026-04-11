@@ -26,17 +26,26 @@ MODEL:
     FIND_UNUSED_PARAMETERS: true
     # CKPT: -1
 
-    # CKPT: 29
-    # CKPT_DIR: '/d/hpc/home/zr1677/OpenStereo_forked/output/SceneFlowDataset/IINet/350_iinet_sceneflow_default/350_exp_350_half_64505959/ckpt/'
-    
     CKPT: 59
-    CKPT_DIR: '/d/hpc/home/zr1677/OpenStereo_forked/output/SceneFlowDataset/IINet/350_iinet_sceneflow_default/350_exp_350_half_64659309/ckpt/'
+    CKPT_DIR: '/d/hpc/home/zr1677/OpenStereo_DoItOnce/output/SceneFlowDataset/IINet/350_iinet_sceneflow_default/350_exp_350_half_65200404/ckpt/'
+    
+    # CKPT: 29
+    # CKPT_DIR: '/d/hpc/home/zr1677/OpenStereo_DoItOnce/output/SceneFlowDataset/IINet/350_iinet_sceneflow_default/350_exp_350_half_64165135/ckpt/'
+    
+    # CKPT: 38
+    # CKPT_DIR: '/d/hpc/home/zr1677/OpenStereo_DoItOnce/output/SceneFlowDataset/IINet/350_iinet_sceneflow_default/350_exp_350_half_65082929/ckpt/'
+
+    # CKPT: 29
+    # CKPT_DIR: '/d/hpc/home/zr1677/OpenStereo_DoItOnce/output/SceneFlowDataset/IINet/350_iinet_sceneflow_default/350_exp_350_half_64505959/ckpt/'
+    
+    # CKPT: 59
+    # CKPT_DIR: '/d/hpc/home/zr1677/OpenStereo_DoItOnce/output/SceneFlowDataset/IINet/350_iinet_sceneflow_default/350_exp_350_half_64659309/ckpt/'
     
 
     PRETRAINED_MODEL: ''
-    # PRETRAINED_MODEL: '/d/hpc/home/zr1677/OpenStereo_forked/output/SceneFlowDataset/IINet/350_iinet_sceneflow_default/350_exp_350_half_64505959/ckpt/best_model.pth'
+    # PRETRAINED_MODEL: '/d/hpc/home/zr1677/OpenStereo_DoItOnce/output/SceneFlowDataset/IINet/350_iinet_sceneflow_default/350_exp_350_half_64505959/ckpt/best_model.pth'
 
-    # PRETRAINED_MODEL: '/d/hpc/home/zr1677/OpenStereo_forked/output/SceneFlowDataset/IINet/350_iinet_sceneflow_default/350_exp_350_half_63759227/ckpt/checkpoint_epoch_14.pth'
+    # PRETRAINED_MODEL: '/d/hpc/home/zr1677/OpenStereo_DoItOnce/output/SceneFlowDataset/IINet/350_iinet_sceneflow_default/350_exp_350_half_63759227/ckpt/checkpoint_epoch_14.pth'
 
 OPTIMIZATION:
     BATCH_SIZE_PER_GPU: &bs 16
