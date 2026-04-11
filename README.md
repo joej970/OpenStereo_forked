@@ -20,7 +20,7 @@ When deployed via ONNX and TensorRT on a consumer-grade GPU, our single-pass ext
 
 ## The implementation:
 
-[OpenStereo_DoItOnce/stereo/modeling/models/LeanStereo/FeatExtractionWrapper.py](OpenStereo_DoItOnce/stereo/modeling/models/LeanStereo/FeatExtractionWrapper.py) contains the implementation of our method. Based on the model configuration setting     
+[OpenStereo_DoItOnce/stereo/modeling/models/LeanStereo/FeatExtractionWrapper.py](./stereo/modeling/models/LeanStereo/FeatExtractionWrapper.py) contains the implementation of our method. Based on the model configuration setting     
 
 ```
 BACKBONE_CFGS: 
@@ -31,7 +31,7 @@ BACKBONE_CFGS:
 different implementation of the forward() method is used. 
 
 ## Dataset configuration
-[OpenStereo_DoItOnce/data/SceneFlow/sceneflow_hpc_finalpass.yaml](OpenStereo_DoItOnce/data/SceneFlow/sceneflow_hpc_finalpass.yaml):
+[OpenStereo_DoItOnce/data/SceneFlow/sceneflow_hpc_finalpass.yaml](./data/SceneFlow/sceneflow_hpc_finalpass.yaml):
 
 ### Specify training samples
 The dataset configuration file specifies location of .txt file containing a list of all samples. Example .txt file:
@@ -78,11 +78,11 @@ Using
     - /d/hpc/home/<user>/datasets/sceneflow/flyingthings3d/frames_finalpass/TEST/C/0134/left/0013.png
     - /d/hpc/home/<user>/datasets/sceneflow/flyingthings3d/frames_finalpass/TEST/C/0036/left/0006.png
 ```
-If this sample is also specified in the .txt file containing samples and ```TEST_VISUALIZATION``` is set to true, then image showing ground truth, prediction and error map is generated.
+If this sample name is also specified in the .txt file containing samples and ```TEST_VISUALIZATION``` in model configuration is set to true, then image showing ground truth, prediction and error map is generated.
 
 
 ## Model configuration file (.yaml)
-[OpenStereo_DoItOnce/cfgs/LeanStereo/300a_LeanStereo_sceneflow.yaml](OpenStereo_DoItOnce/cfgs/LeanStereo/300a_LeanStereo_sceneflow.yaml):
+[OpenStereo_DoItOnce/cfgs/LeanStereo/300a_LeanStereo_sceneflow.yaml](./cfgs/LeanStereo/300a_LeanStereo_sceneflow.yaml):
 
 This .yaml is used to configure model. Most of the parameteres are related to a specific model, while other are related to the training configuration. Some more specific ones are:
 
@@ -112,7 +112,7 @@ OPTIMIZATION:
 ### How to use (if using HPC and slurm management and job scheduling system)
 If using slurm to launch processes, refer to our example slurm script to train, evaluate using TensorRT and parse detailed training logs into a single more succinct log.
 
-Example slurm script: [OpenStereo_DoItOnce/slurm_training/300_half_train_v100s_wn.slurm](OpenStereo_DoItOnce/slurm_training/300_half_train_v100s_wn.slurm).
+Example slurm script: [OpenStereo_DoItOnce/slurm_training/300_half_train_v100s_wn.slurm](./slurm_training/300_half_train_v100s_wn.slurm).
 
 ### If not using slurm
 Call the same command as specified in the above mentioned slurm script:
