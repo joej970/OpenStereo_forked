@@ -7,6 +7,8 @@ from .iinet import IINet
 import time
 from functools import partial
 
+import os
+
 import numpy as np
 import torch
 import torch.distributed as dist
@@ -92,13 +94,41 @@ class Trainer(TrainerTemplate):
             self.scaler.scale(loss).backward()
             # 做梯度剪裁的时候需要先unscale, unscales the gradients of optimizer's assigned params in-place
             self.scaler.unscale_(self.optimizer)
-            # 梯度剪裁
-            if self.clip_gard is not None:
-                self.clip_gard(self.model)
-            # optimizer's gradients are already unscaled, so scaler.step does not unscale them
-            self.scaler.step(self.optimizer)
-            # Updates the scale for next iteration.
-            self.scaler.update()
+
+            # --- CUSTOM SAFETY CHECK FOR ABNORMAL GRADIENTS ---
+            grad_is_valid = True
+            grad_limit = 10.0 # Set threshold for "explosion"
+            
+            for name, param in self.model.named_parameters():
+                if param.grad is not None:
+                    # 1. Check for Inf/NaN (Scaler does this too, but this lets us log it)
+                    if torch.isnan(param.grad).any() or torch.isinf(param.grad).any():
+                        debug_printer.print_of_function_force_print(lambda : f"NaN/Inf gradient detected in {name}")
+                        # debug_printer.print_of_function_force_print(lambda : f"Skipping batch: NaN/Inf gradient detected in {name}")
+                        # grad_is_valid = False
+                        break
+                    
+                    # 2. Check for Finite Explosion
+                    grad_max = param.grad.abs().max()
+                    if grad_max > grad_limit:
+                        # debug_printer.print_of_function_force_print(lambda : f"Skipping batch: Gradient explosion ({grad_max:.2f}) detected in {name}")
+                        debug_printer.print_of_function_force_print(lambda : f"Gradient explosion ({grad_max:.2f}) detected in {name}")
+                        # grad_is_valid = False
+                        break
+            
+            # Only update weights if gradients are valid
+            if grad_is_valid:
+                # Gradient Clipping
+                if self.clip_gard is not None:
+                    self.clip_gard(self.model)
+                
+                # Update weights
+                self.scaler.step(self.optimizer)
+                self.scaler.update() 
+            else:
+                # If invalid, we throw away these gradients and do nothing to weights
+                self.optimizer.zero_grad()
+
             # torch.cuda.empty_cache()
 
             # warmup_scheduler period>1 和 batch_scheduler 不要同时使用
@@ -172,6 +202,25 @@ class Trainer(TrainerTemplate):
         for k in evaluator_cfgs.METRIC:
             epoch_metrics[k] = {'indexes': [], 'values': []}
 
+        # profiler
+        prof = None
+        if (self.enable_profiler and self.local_rank == 0 and current_epoch == 0) or current_epoch == -1:
+            from torch.profiler import profile, schedule, tensorboard_trace_handler, ProfilerActivity
+            print("Initializing profiler for evaluation...")
+            if current_epoch == -1:
+                filename = f"{self.args.experiment_id}_{self.args.slurm_job_id}_eval_before_train"
+            else:
+                filename = f"{self.args.experiment_id}_{self.args.slurm_job_id}_eval"
+            prof = profile(
+                activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
+                schedule=schedule(wait=1, warmup=11, active=3, repeat=0),
+                on_trace_ready=tensorboard_trace_handler(os.path.join(self.args.output_dir, "profiler"), worker_name=filename),
+                record_shapes=False,
+                profile_memory=False,
+                with_stack=True
+            )
+            prof.__enter__()
+
         for i, data in enumerate(self.eval_loader):
 
             # Update debug printer sample index
@@ -231,6 +280,18 @@ class Trainer(TrainerTemplate):
                         'image/eval/disp': color_map_tensorboard(data['disp'][0], model_pred['disp_pred'].squeeze(1)[0])
                     }
                     write_tensorboard(self.tb_writer, tb_info, current_epoch * len(self.eval_loader) + i)
+
+            if prof:
+                prof.step()
+                message = ('Evaluation Profiling Epoch:{:>2d} to file {:s} Iter:{:>4d}').format(
+                    current_epoch, os.path.join(self.args.output_dir, "profiler"), i)
+                self.logger.info(message)
+                if i >= 15:  # Stop profiling after a few steps
+                    self.logger.info("Evaluation Profiling finished.")
+                    message = ('{:s}').format(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
+                    self.logger.info(message)
+                    prof.__exit__(None, None, None)
+                    prof = None
 
         # gather from all gpus
         if self.args.dist_mode:

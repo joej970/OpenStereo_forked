@@ -4,7 +4,7 @@ from stereo.modeling.trainer_template import TrainerTemplate
 from functools import partial
 from PIL import Image
 from stereo.utils import common_utils
-from stereo.utils.common_utils import color_map_tensorboard, write_tensorboard
+from stereo.utils.common_utils import color_map_tensorboard, write_tensorboard, export_gt_pred_error_map
 from stereo.evaluation.metric_per_image import epe_metric, d1_metric, threshold_metric
 import torch.distributed as dist
 
@@ -207,9 +207,8 @@ class Trainer(TrainerTemplate):
 
         # profiler
         prof = None
-        if self.enable_profiler and self.local_rank == 0 and current_epoch == 0:
+        if (self.enable_profiler and self.local_rank == 0 and current_epoch == 0) or current_epoch == -1:
             from torch.profiler import profile, schedule, tensorboard_trace_handler, ProfilerActivity
-            # socket.gethostname()}_{os.getpid().pt.torch.json
             print("Initializing profiler for evaluation...")
             prof = profile(
                 activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
@@ -343,7 +342,7 @@ class Trainer(TrainerTemplate):
 
         # profiler
         prof = None
-        if self.enable_profiler and self.local_rank == 0 and current_epoch == 0:
+        if self.enable_profiler and self.local_rank == 0:
             from torch.profiler import profile, schedule, tensorboard_trace_handler, ProfilerActivity
 
             print("Initializing profiler for testing...")
@@ -411,6 +410,9 @@ class Trainer(TrainerTemplate):
 
                         im = Image.fromarray(error_map.mul(255).byte().cpu().numpy().transpose(1,2,0))
                         im.save(saving_loc)
+
+                        # export as numpy array too
+                        export_gt_pred_error_map(disp_gt = data['disp'][idx], pred = model_pred['disp_pred'].squeeze(1)[idx], output_dir = self.args.output_dir, file_name = file_name, disp_max = 192)
                     # else:
                     #     print(f"Saving error map for {data_name} not requested.")
                         # save_image(error_map, saving_loc)

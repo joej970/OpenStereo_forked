@@ -113,11 +113,21 @@ def parse_config():
             cfgs.OPTIMIZATION = EasyDict({'BATCH_SIZE_PER_GPU': args.batch_size})
 
     if args.override_epoch is not None:
-        if 'OPTIMIZATION' in cfgs and hasattr(cfgs.OPTIMIZATION, 'NUM_EPOCHS'):
-            cfgs.OPTIMIZATION.NUM_EPOCHS = args.override_epoch
-        elif 'OPTIMIZATION' in cfgs:
-            cfgs.OPTIMIZATION.NUM_EPOCHS = args.override_epoch
+        if 'OPTIMIZATION' in cfgs:
+            # Track if we found and updated any relevant fields
+            updated_any = False
+            
+            # Iterate through all keys in the OPTIMIZATION dictionary
+            for key in list(cfgs.OPTIMIZATION.keys()):
+                if str(key).startswith('NUM_EPOCHS'):
+                    cfgs.OPTIMIZATION[key] = args.override_epoch
+                    updated_any = True
+            
+            # If we didn't find any 'NUM_EPOCHS*' keys, create a default one
+            if not updated_any:
+                cfgs.OPTIMIZATION.NUM_EPOCHS = args.override_epoch
         else:
+            # If OPTIMIZATION doesn't exist at all, create it with the default
             cfgs.OPTIMIZATION = EasyDict({'NUM_EPOCHS': args.override_epoch})
 
 

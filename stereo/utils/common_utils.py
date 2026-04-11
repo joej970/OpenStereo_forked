@@ -258,6 +258,35 @@ def color_map_tensorboard(disp_gt, pred, disp_max=192):
 
     return color_disp_c
 
+def export_gt_pred_error_map(disp_gt, pred, output_dir, file_name, disp_max=192):
+    
+
+    disp_gt = disp_gt.detach().data.cpu().numpy()
+    pred = pred.detach().data.cpu().numpy()
+
+    first_nonzero_line = get_first_nonzero_line(disp_gt)
+    disp_gt = trim_tensor_by_line_indices(disp_gt, first_nonzero_line)
+    pred = trim_tensor_by_line_indices(pred, first_nonzero_line)
+
+    error_map = np.abs(pred - disp_gt)
+
+    disp_gt = np.clip(disp_gt, a_min=0, a_max=disp_max)
+    pred = np.clip(pred, a_min=0, a_max=disp_max)
+
+    gt_norm = 255.0 * disp_gt / disp_max
+    pred_norm = 255.0 * pred / disp_max
+    error_map_norm = 255.0 * error_map / np.max(error_map)
+
+    save_directory = os.path.join(output_dir, 'test_error_maps_raw')
+    
+    saving_loc = os.path.join(save_directory, file_name)
+    saving_loc = f"{saving_loc}.npz"
+    os.makedirs(os.path.dirname(saving_loc), exist_ok=True)
+
+    np.savez_compressed(saving_loc, gt=gt_norm, pred=pred_norm, error_map=error_map_norm)
+
+    return gt_norm, pred_norm, error_map_norm
+
 
 def write_tensorboard(tb_writer, tb_info, step):
     for k, v in tb_info.items():

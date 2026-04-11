@@ -296,7 +296,8 @@ def parse_tensorrt_json(json_filepath):
             if 'memory' in data:
                 memory_info = data['memory']
                 if 'engine_footprint' in memory_info:
-                    tensorrt_data_single['engine_footprint_mb'] = memory_info['engine_footprint'].get('total_model_memory_mb', -1)
+                    tensorrt_data_single['engine_footprint_mb'] = memory_info['engine_footprint'].get('engine_weights_mb', -1)
+                    # tensorrt_data_single['engine_footprint_mb'] = memory_info['engine_footprint'].get('total_model_memory_mb', -1)
                 if 'inference_memory_stats' in memory_info:
                     tensorrt_data_single['mem_mb_mean'] = memory_info['inference_memory_stats'].get('mem_mb_mean', -1)
 

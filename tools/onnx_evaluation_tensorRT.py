@@ -366,7 +366,7 @@ def run_trt_benchmarks(onnx_files, args, cfgs):
 if __name__ == "__main__":
 
     print(f"running command: ") 
-    print(f"python ./OpenStereo_forked/tools/onnx_evaluation_tensorRT.py {sys.argv[1:]}")
+    print(f"python ./OpenStereo_DoItOnce/tools/onnx_evaluation_tensorRT.py {sys.argv[1:]}")
 
     args, cfgs = config_parsing.parse_config()
 

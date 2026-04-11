@@ -360,7 +360,6 @@ class FixedNoiseOnDepthSource(object):
         
         # self.last_idx = 0  # Initialize index counter
         # # Create output directory if it doesn't exist
-        # self.output_dir = "/d/hpc/home/zr1677/OpenStereo_forked/depth_float_output_debug"
         # os.makedirs(self.output_dir, exist_ok=True)
 
     def __call__(self, sample):

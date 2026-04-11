@@ -1,14 +1,24 @@
 
 
 import torch
+import torch.nn as nn
 
-class FeatExtractionWrapper():
-    def __init__(self, forward_impl, cfgs=None):
+class feature_extraction(nn.Module):
+    def __init__(self, feature_extractor, concat_feature=False, concat_feature_channel=12, cfgs = None):
+        super(feature_extraction, self).__init__()
+        self.concat_feature = concat_feature
+        self.features = feature_extractor
+        if self.concat_feature:
+            self.lastconv = nn.Sequential(convbn(320, 128, 3, 1, 1, 1),
+                                          nn.ReLU(inplace=True),
+                                          nn.Conv2d(128, concat_feature_channel, kernel_size=1, padding=0, stride=1,
+                                                    bias=False))
 
-        self.forward_impl = forward_impl
+        # by default, do two separate passes (traditional way)
+        # self.forward = self.forward_single_image
+        self.forward = self.forward_left_right_one_by_one
 
-        self.forward = forward_impl
-
+        # check if batching requested (new proposal)
         if (cfgs is not None):
             should_concat = cfgs.get('CONCAT_LEFT_RIGHT', False) # if not supplied, then assume False
             if should_concat:
@@ -24,14 +34,33 @@ class FeatExtractionWrapper():
                     self.forward = self.forward_left_right_images_vertical
                 elif concat_type == 'multicut':
                     self.forward = self.forward_left_right_images_multicut
+                    self.h_division = cfgs.get('H_DIVISION', 1)
+                    self.w_division = cfgs.get('W_DIVISION', 2)
+                    print(f"Multicut concat: H_DIVISION={self.h_division}, W_DIVISION={self.w_division}")
+                    # if self.h_division is None or self.w_division is None:
+                    #     raise ValueError(f"MODEL.BACKBONE_CFGS.H_DIV and W_DIV must be specified for multicut concatenation.")                    
                 else:
                     raise NotImplementedError(f"Concat type '{concat_type}' is not implemented. Available: batch, horizontal, vertical, multicut")
-        
 
+    
     def forward_left_right_one_by_one(self, left, right):
-        features_left = self.forward_impl(left)
-        features_right = self.forward_impl(right)
-        return features_left, features_right
+        # first left
+        features_left = self.features(left)
+        if self.concat_feature:
+            concat_feature_left = self.lastconv(features_left)
+
+        # then right
+        features_right = self.features(right)        
+        if self.concat_feature:
+            concat_feature_right = self.lastconv(self.features(right))
+
+        # return together
+        if self.concat_feature:
+            return {"features": features_left, "concat_feature": concat_feature_left}, \
+                     {"features": features_right, "concat_feature": concat_feature_right}
+        else:
+            return {"features": features_left}, {"features": features_right}
+ 
 
     def forward_left_right_images_along_batch(self, left, right):
         # concatenate left and right images along batch dimension
@@ -89,15 +118,16 @@ class FeatExtractionWrapper():
     def forward_left_right_images_multicut(self, image_left, image_right):
         image_left_parts = []
         image_right_parts = []
-        w_division = 2
-        h_division = 1 # after division, the new height and width need to be divisible by 32 (depending on the backbone)
+        w_division = self.w_division
+        h_division = self.h_division
+        # after division, the new height and width need to be divisible by 32 (depending on the backbone)
 
         nr_of_parts = w_division * h_division  # 8
         h, w, b = image_left.size(-2), image_left.size(-1), image_left.size(0)
         h_divided = h // h_division
         w_divided = w // w_division
-        assert h_divided % 32 == 0, "Image height not divisible by 32"
-        assert w_divided % 32 == 0, "Image width not divisible by 32"
+        assert h_divided % 32 == 0, f"Original image height {h} divided down to {h_divided} not divisible by 32."
+        assert w_divided % 32 == 0, f"Original image width {w} divided down to {w_divided} not divisible by 32."
 
         for i in range(h_division):
             for j in range(w_division):
@@ -158,7 +188,6 @@ class FeatExtractionWrapper():
 
                     left_h_sequence = []
                     right_h_sequence = []
-                    
                     for j in range(w_division): # along width
 
                         left_h_sequence.append(concat_feature_left[i*b*w_division + j*b + bi, ...]) # append to horizontal sequence

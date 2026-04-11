@@ -91,11 +91,11 @@ class IINet(nn.Module):
     def forward(self, input:dict, only_uncer=False):
 
         left_image, right_image = input['left'], input['right']
-        assert left_image.shape[2]%32 == 0 and right_image.shape[2]%32 == 0, "Image size must be divisible by 32!"
 
         # matching_left_feats, left_feats = self.matching_model(left_image)
         # matching_right_feats, _ = self.matching_model(right_image)
         (matching_left_feats, left_feats), (matching_right_feats, right_feats) = self.matching_model(left_image,right_image)
+
         cost_volumes, hypos, priority = self.cost_volume(
                                                 left_feats=matching_left_feats,
                                                right_feats=matching_right_feats,
@@ -121,6 +121,17 @@ class IINet(nn.Module):
         depth_outputs["cost_volume"] = cost_volumes
         depth_outputs["hypos"] = hypos
         depth_outputs["confidence"] = priority['cconf'][0][0:1]
+
+        # debug_printer.print_of_function(lambda : f"Input image1 stats: min={image1.min():.3f}, max={image1.max():.3f}, mean={image1.mean():.3f}, std={image1.std():.3f}")
+        
+        if not only_uncer:    
+            for i in range(4, 0, -1):
+                if 0 < i < self.run_opts.OUT_SCALE:
+                    debug_printer.print_of_function(common_utils.check_max_vals, depth_outputs[f"disp_pred_s{i}"], name=f"disp_pred_s{i}", n_max_vals=5)
+                
+            # depth_outputs["disp_pred"] 
+            debug_printer.print_of_function(common_utils.check_max_vals, depth_outputs["disp_pred"], name="disp_pred", n_max_vals=5)
+            debug_printer.print_of_function(lambda : f" ")
 
         if not self.training and not only_uncer:
             depth_outputs["disp_pred"] = depth_outputs["disp_pred"]*self.run_opts.DISP_SCALE # if evaluation or test, scale up the disparity to the original scale (since the network outputs at a lower scale)

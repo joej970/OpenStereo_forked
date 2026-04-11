@@ -2,6 +2,7 @@
 # @Author  : zhangchenming
 import os
 import time
+import datetime
 import glob
 import torch
 import torch.nn as nn
@@ -11,7 +12,7 @@ from PIL import Image
 from functools import partial
 from stereo.datasets import build_dataloader
 from stereo.utils import common_utils
-from stereo.utils.common_utils import color_map_tensorboard, write_tensorboard
+from stereo.utils.common_utils import color_map_tensorboard, write_tensorboard, export_gt_pred_error_map
 from stereo.utils.warmup import LinearWarmup
 from stereo.utils.clip_grad import ClipGrad
 from stereo.utils.lamb import Lamb
@@ -302,7 +303,13 @@ class TrainerTemplate:
             self.train_sampler.set_epoch(current_epoch)
             print(f"Rank {self.local_rank} set epoch to {current_epoch} for distributed training.")
 
+        start_time = time.time()
         self.train_one_epoch(current_epoch=current_epoch, tbar=tbar)
+        end_time = time.time()
+        duration_s = (end_time - start_time)
+        duration_string = str(datetime.timedelta(seconds=duration_s))
+        print(f"Trained epoch: {current_epoch} in {duration_string} ({duration_s} s)")
+        self.logger.info(f"Trained epoch: {current_epoch} in {duration_string} ({duration_s} s)")
 
         if self.cfgs.OPTIMIZATION.AMP == False:
             if self.cfgs.OPTIMIZATION.get('AMP_ENABLED_AFTER_EPOCH', None) is not None:
@@ -321,13 +328,28 @@ class TrainerTemplate:
 
     def evaluate(self, current_epoch):
         self.model.eval()
+        
+        start_time = time.time()
         self.eval_one_epoch(current_epoch=current_epoch)
+        end_time = time.time()
+        duration_s = (end_time - start_time)
+        duration_string = str(datetime.timedelta(seconds=duration_s))
+        print(f"Evaluated epoch {current_epoch} in {duration_string} ({duration_s} s)")
+        self.logger.info(f"Evaluated epoch: {current_epoch} in {duration_string} ({duration_s} s)")
+
         if self.args.dist_mode:
             dist.barrier()
 
     def test(self, current_epoch):
         self.model.eval()
+        start_time = time.time()
         results = self.test_one_epoch(current_epoch=current_epoch)
+        end_time = time.time()
+        duration_s = (end_time - start_time)
+        duration_string = str(datetime.timedelta(seconds=duration_s))
+        print(f"Tested epoch: {current_epoch} in {duration_string} ({duration_s} s)")
+        self.logger.info(f"Tested epoch: {current_epoch} in {duration_string} ({duration_s} s)")
+
         if self.args.dist_mode:
             dist.barrier()
         return results
@@ -686,7 +708,7 @@ class TrainerTemplate:
 
         # profiler
         prof = None
-        if self.enable_profiler and self.local_rank == 0 and current_epoch == 0:
+        if self.enable_profiler and self.local_rank == 0:
             from torch.profiler import profile, schedule, tensorboard_trace_handler, ProfilerActivity
 
             print("Initializing profiler for testing...")
@@ -765,6 +787,9 @@ class TrainerTemplate:
 
                         im = Image.fromarray(error_map.mul(255).byte().cpu().numpy().transpose(1,2,0))
                         im.save(saving_loc)
+
+                        # export as numpy array too
+                        export_gt_pred_error_map(disp_gt = data['disp'][idx], pred = model_pred['disp_pred'].squeeze(1)[idx], output_dir = self.args.output_dir, file_name = file_name, disp_max = 192)
                     # else:
                     #     print(f"Saving error map for {data_name} not requested.")
                         # save_image(error_map, saving_loc)

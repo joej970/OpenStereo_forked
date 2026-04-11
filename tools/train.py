@@ -12,34 +12,20 @@ import torch
 import torch.distributed as dist
 from torch.utils.tensorboard import SummaryWriter
 
-# sys.path.insert(0, './')
+# On our HPC it was necessary to set the following environment variables for distributed training to work properly. You may need to adjust these based on your cluster's configuration and job scheduler.
 # Add the project root to Python path
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(current_dir)  # Go up one level from tools/ to project root
 sys.path.insert(0, project_root)
 print(f"Added to Python path: {project_root}")
 print(f"Current working directory: {os.getcwd()}")
+# End of custom environment setup
 
 from stereo.utils import common_utils
 from stereo.modeling import build_trainer
 from cfgs.data_basic import DATA_PATH_DICT
 
 import config_parsing
-
-
-
-# slurm environment variables
-# WORLD_SIZE = int(os.environ['SLURM_NTASKS'])
-# WORLD_RANK = int(os.environ['SLURM_PROCID'])
-# LOCAL_RANK = int(os.environ['SLURM_LOCALID'])
-# torchrun environment variables
-# WORLD_SIZE = int(os.environ['WORLD_SIZE'])
-# WORLD_RANK = int(os.environ['RANK'])
-# LOCAL_RANK = int(os.environ['LOCAL_RANK'])
-
-
-# print("tasks per node: ", os.environ['SLURM_TASKS_PER_NODE'])
-# GROUP_RANK = WORLD_RANK/2
 
 
 def log_configs_to_tensorboard(cfgs, tb_writer, pre='cfgs', step=0):
