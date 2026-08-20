@@ -130,7 +130,7 @@ def run_trt_benchmark(onnx_file, args, cfgs):
     result = analyze_trt_csv_profile.convert_trt_csv_to_perfetto_json(csv_filename, f"{csv_filename[:-4]}_perfetto.json")
     analyze_trt_csv_profile.save_nested_profile(result["nested_profile"], f"{csv_filename[:-4]}_nested.json")
     
-    top_layers, stage_times = analyze_trt_csv_profile.analyze_trt_csv_profile(csv_filename)
+    top_layers, stage_times, stage_times_categorised, uncategorised_times, iterations = analyze_trt_csv_profile.analyze_trt_csv_profile(csv_filename)
     # if tb_writer is not None:
     #     tb_writer.add_scalar("TensorRT Benchmark/Inference_Time", t_per_inference, global_step=0)
     #     tb_writer.add_scalar("TensorRT Benchmark/Throughput", throughput, global_step=0)
@@ -144,6 +144,10 @@ def run_trt_benchmark(onnx_file, args, cfgs):
     logger.info(f"Top Layers:\n{top_layers.to_string()}")
     print(f"Stage Times:\n{stage_times}")
     logger.info(f"Stage Times:\n{stage_times}")
+
+    stage_times.to_csv(f"{csv_filename[:-4]}_stage_times.csv", index=False)
+    stage_times_categorised.to_csv(f"{csv_filename[:-4]}_stage_times_categorised.csv", index=False)
+    uncategorised_times.to_csv(f"{csv_filename[:-4]}_uncategorised_times.csv", index=False)
     
     formatted_string = measure.format_dict_multiline(experiment_summary)
     print(formatted_string)
@@ -218,7 +222,7 @@ def run_trt_benchmarks(onnx_files, args, cfgs):
         print(f"Running TensorRT benchmark on ONNX file: {onnx_file}")
         logger.info(f"Running TensorRT benchmark on ONNX file: {onnx_file}")
         logger.info(f"exp_id: {exp_id}, exp_name: {exp_name}, slurm_job_id: {slurm_job_id}")
-        csv_filename = os.path.join(args.output_dir, f"{exp_id}_{exp_name}_{slurm_job_id}_trt_benchmark.csv")
+        csv_filename = os.path.join(args.output_dir, f"{exp_id}_{exp_name}_{slurm_job_id}_trt_benchmark_{o}.csv")
 
         experiment_summary = {}
 
@@ -313,13 +317,18 @@ def run_trt_benchmarks(onnx_files, args, cfgs):
         result = analyze_trt_csv_profile.convert_trt_csv_to_perfetto_json(csv_filename, f"{csv_filename[:-4]}_perfetto.json")
         analyze_trt_csv_profile.save_nested_profile(result["nested_profile"], f"{csv_filename[:-4]}_nested.json")
         
-        top_layers, stage_times = analyze_trt_csv_profile.analyze_trt_csv_profile(csv_filename)
+        top_layers, stage_times, stage_times_categorised, uncategorised_times, iterations = analyze_trt_csv_profile.analyze_trt_csv_profile(csv_filename)
 
         print(f"Top Layers:\n{top_layers}")
-        logger.info(f"Top Layers:\n{top_layers}")
+        logger.info(f"Top Layers:\n{top_layers.to_string()}")
         print(f"Stage Times:\n{stage_times}")
-        logger.info(f"Stage Times:\n{stage_times}")
-        
+        logger.info(f"Stage Times:\n{stage_times.to_string()}")
+        logger.info(f"Uncategorised Stage Times:\n{uncategorised_times.to_string()}")
+
+        stage_times.to_csv(f"{csv_filename[:-4]}_stage_times.csv", index=False)
+        stage_times_categorised.to_csv(f"{csv_filename[:-4]}_stage_times_categorised.csv", index=False)
+        uncategorised_times.to_csv(f"{csv_filename[:-4]}_uncategorised_times.csv", index=False)
+
         formatted_string = measure.format_dict_multiline(experiment_summary)
         print(formatted_string)
 

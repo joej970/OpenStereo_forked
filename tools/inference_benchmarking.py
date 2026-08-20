@@ -4,6 +4,7 @@ import pycuda.autoinit
 import numpy as np
 import time
 import os
+import json
 
 
 import csv
@@ -19,20 +20,95 @@ class CustomProfiler(trt.IProfiler):
     def report_layer_time(self, layer_name, ms):
         if self.ignore_copies and "Reformatting CopyNode" in layer_name:
             return
-        self.records.append((layer_name, ms))
+        self.records.append((layer_name, float(ms)))
 
-    def save_to_csv(self):
-        with open(self.save_path, "w", newline="") as f:
-            writer = csv.writer(f)
-            writer.writerow(["Layer Name", "Time (ms)"])
-            for name, ms in self.records:
-                writer.writerow([name, ms])
+    def aggregate(self):
+        grouped = defaultdict(list)
 
-    def summarize(self, top_n=20):
-        sorted_layers = sorted(self.records, key=lambda x: x[1], reverse=True)
-        print(f"\nTop {top_n} layers by execution time:")
-        for name, ms in sorted_layers[:top_n]:
-            print(f"{name:80s} {ms:.4f} ms")
+        for name, ms in self.records:
+            grouped[name].append(ms)
+
+        rows = []
+        for name, values in grouped.items():
+            values = np.array(values, dtype=float)
+            rows.append({
+                "layer_name": name,
+                "calls": int(len(values)),
+                "mean_ms": float(np.mean(values)),
+                "std_ms": float(np.std(values)),
+                "min_ms": float(np.min(values)),
+                "max_ms": float(np.max(values)),
+                "total_ms": float(np.sum(values)),
+            })
+
+        rows.sort(key=lambda x: x["total_ms"], reverse=True)
+        return rows
+
+    def save_to_csv(self, save_path=None, aggregated=True):
+        path = save_path or self.save_path
+
+        if aggregated:
+            rows = self.aggregate()
+            with open(path, "w", newline="") as f:
+                writer = csv.DictWriter(
+                    f,
+                    fieldnames=[
+                        "layer_name",
+                        "calls",
+                        "mean_ms",
+                        "std_ms",
+                        "min_ms",
+                        "max_ms",
+                        "total_ms",
+                    ],
+                )
+                writer.writeheader()
+                writer.writerows(rows)
+        else:
+            with open(path, "w", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerow(["Layer Name", "Time (ms)"])
+                for name, ms in self.records:
+                    writer.writerow([name, ms])
+
+    def save_to_json(self, aggregated=True):
+        path = self.save_path.replace(".csv", ".json")
+
+        if aggregated:
+            data = {
+                "num_raw_records": len(self.records),
+                "num_unique_layers": len(set(name for name, _ in self.records)),
+                "layers": self.aggregate(),
+            }
+        else:
+            data = {
+                "num_records": len(self.records),
+                "layers": [
+                    {
+                        "layer_name": name,
+                        "time_ms": ms,
+                    }
+                    for name, ms in self.records
+                ],
+            }
+
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+
+
+    # top_n: if >0, only print the top N layers by total execution time. If -1, print all layers.
+    def summarize(self, top_n=-1):
+        rows = self.aggregate()
+        print(f"\nTop {top_n} layers by total execution time:")
+        if top_n < 0:
+            top_n = len(rows)
+        for row in rows[:top_n]:
+            print(
+                f"{row['layer_name']:80s} "
+                f"mean={row['mean_ms']:.4f} ms, "
+                f"total={row['total_ms']:.4f} ms, "
+                f"calls={row['calls']}"
+            )
 
 class TRTBenchmark:
     def __init__(self, onnx_path, fp16=True, workspace_size_gb=4, data_loader=None, cfgs=None):
@@ -60,6 +136,21 @@ class TRTBenchmark:
         # Capture baseline memory before any TensorRT operations
         print(f"GPU memory info: {self.get_gpu_memory_info()}")
         self.memory_snapshots.append(('before_engine_creation', self.get_gpu_memory_info()))
+
+        self.time_each_inference_separately = True # as it always has been default
+
+        print(cfgs)
+        if hasattr(cfgs, 'TESTING'):
+            if hasattr(cfgs.TESTING, 'TENSORRT'):
+                if hasattr(cfgs.TESTING.TENSORRT, 'TIME_EACH_INFERENCE_SEPARATELY'):
+                    self.time_each_inference_separately = cfgs.TESTING.TENSORRT.TIME_EACH_INFERENCE_SEPARATELY
+                    print(f"Found: TESTING.TENSORRT.TIME_EACH_INFERENCE_SEPARATELY: {self.time_each_inference_separately}")
+                else:
+                    print("TESTING.TENSORRT.TIME_EACH_INFERENCE_SEPARATELY not found in cfgs, using default True")
+            else:
+                print("TESTING.TENSORRT section not found in cfgs, using default TIME_EACH_INFERENCE_SEPARATELY=True")
+        else:
+            print("TESTING section not found in cfgs, using default TIME_EACH_INFERENCE_SEPARATELY=True")
 
         print("Creating CUDA events for timing...")
         self.start_event = cuda.Event()
@@ -268,19 +359,41 @@ class TRTBenchmark:
             self.context.execute_async_v2(bindings=self.bindings, stream_handle=self.stream.handle)
             self.stream.synchronize()
 
-    def benchmark(self, runs=100):
+    # time_each_inference_separately: if True, we record CUDA events around each individual inference to get per-inference timing. If False, we record one event before the loop and one after to get total time for all inferences, which can be more accurate for very fast models.
+    def benchmark(self, time_each_inference_separately, runs=100):
         inference_memories = []
         self._prepare_dummy_inputs()
         times = []
         before_inference = self.get_gpu_memory_info()
 
-        for i in range(runs):
+        if(time_each_inference_separately):
+            print("Benchmarking with per-inference timing...")
+            for i in range(runs):
+                # Start CUDA event for GPU timing
+                self.start_event.record(self.stream)
+
+                # Execute inference
+                self.context.execute_async_v2(bindings=self.bindings, stream_handle=self.stream.handle)
+                # self.stream.synchronize() # chatGPT said this should be removed
+
+                # End CUDA event for GPU timing
+                self.end_event.record(self.stream)
+                self.end_event.synchronize()
+
+                # Measure the elapsed time
+                # elapsed_time = self.start_event.time_since(self.end_event)  # In milliseconds
+                elapsed_time = self.end_event.time_since(self.start_event)  # In milliseconds
+                times.append(elapsed_time)
+        else:
+            print("Benchmarking with total timing...")
+
             # Start CUDA event for GPU timing
             self.start_event.record(self.stream)
+            for i in range(runs):
 
-            # Execute inference
-            self.context.execute_async_v2(bindings=self.bindings, stream_handle=self.stream.handle)
-            self.stream.synchronize()
+                # Execute inference
+                self.context.execute_async_v2(bindings=self.bindings, stream_handle=self.stream.handle)
+                # self.stream.synchronize() # chatGPT said this should be removed
 
             # End CUDA event for GPU timing
             self.end_event.record(self.stream)
@@ -289,7 +402,9 @@ class TRTBenchmark:
             # Measure the elapsed time
             # elapsed_time = self.start_event.time_since(self.end_event)  # In milliseconds
             elapsed_time = self.end_event.time_since(self.start_event)  # In milliseconds
-            times.append(elapsed_time)
+            times.append(elapsed_time/runs)
+
+
 
         after_inference = self.get_gpu_memory_info()
         inference_memories.append(after_inference['used_mb'])
@@ -309,12 +424,14 @@ class TRTBenchmark:
         p95 = np.percentile(times, 95)
         return avg, p95, memory_stats
 
-    def profile_layers(self, top_n=100, profile_file="trt_layer_profile.csv"):
+    def profile_layers(self, profile_runs = 100, top_n=100, profile_file="trt_layer_profile.csv"):
         profiler = CustomProfiler(save_path=profile_file)
         self.context.profiler = profiler
-        self.context.execute_v2(self.bindings)
-        profiler.save_to_csv()
+        for _ in range(profile_runs):
+            self.context.execute_v2(self.bindings)
         profiler.summarize(top_n=top_n)
+        profiler.save_to_csv()
+        # profiler.save_to_json()
         print(f"[INFO] Full layer timings saved to {profile_file}")
 
     def test_on_real_data_trt(self):
@@ -516,8 +633,7 @@ def onnx_profile(onnx_path, shape, provider='CUDAExecutionProvider', iters=200, 
     sess_opts = ort.SessionOptions()
     sess_opts.log_severity_level = 3  # 0=VERBOSE 1=INFO 2=WARNING 3=ERROR 4=FATAL
     sess_opts.enable_profiling = True
-    # 2025-11-14 17:51:17.445014573 [V:onnxruntime:, session_state.cc:1146 VerifyEachNodeIsAssignedToAnEp] Node placements
-    # 2025-11-14 17:51:17.445030422 [V:onnxruntime:, session_state.cc:1149 VerifyEachNodeIsAssignedToAnEp]  All nodes placed on [CUDAExecutionProvider]. Number of nodes: 519
+
     sess_opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
     # Optional: save optimized graph
     sess_opts.optimized_model_filepath = onnx_path.replace(".onnx", ".opt.onnx")
@@ -602,7 +718,7 @@ def trt_build_engine(onnx_filename, csv_filename = None, fp16=True, data_loader=
 
     if csv_filename is not None:
         print(f"Starting layer profiling on TensorRT engine, saving to {csv_filename}...")
-        bench.profile_layers(top_n=100, profile_file=csv_filename)
+        bench.profile_layers(profile_runs = 500, top_n=100, profile_file=csv_filename)
         print("Completed layer profiling.")
 
     return bench
@@ -615,7 +731,7 @@ def trt_benchmark(bench: TRTBenchmark):
 
     engine_footprint = bench.get_engine_memory_footprint()
     bench.warmup(iterations=50)
-    avg, p95, memory_inference_stats = bench.benchmark(runs=500)
+    avg, p95, memory_inference_stats = bench.benchmark(bench.time_each_inference_separately, runs=500)
     ips = 1000 / avg
 
     print(f"Average latency: {avg:.3f} ms")

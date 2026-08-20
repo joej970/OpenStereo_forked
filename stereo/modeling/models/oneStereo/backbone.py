@@ -359,72 +359,154 @@ def build_backbone(backbone: str = 'MobileNetv2', cfgs = None, pretrained: bool 
     return model 
 
 
-class Backbone(nn.Module):
-    """Thin wrapper kept for backward compatibility. Delegates to a specific backbone implementation."""
-    def __init__(self, backbone: str = 'MobileNetv2', cfgs = None, pretrained: bool = True, checkpoint_path: str = None):
+class ConcatenationModule(nn.Module):
+    def __init__(self, cfgs):
         super().__init__()
-        print(f"Using backbone: {backbone}, pretrained: {pretrained}, checkpoint_path: {checkpoint_path}")
-        self.impl = build_backbone(backbone, cfgs=cfgs, pretrained=pretrained, checkpoint_path=checkpoint_path)
-        self.output_channels = getattr(self.impl, 'output_channels', None)
+        self.cfgs = cfgs
+        self.should_concat = cfgs.get('CONCAT_LEFT_RIGHT', False) # if not supplied, then assume False
+        if self.should_concat:
+            self.concat_type = cfgs.get('CONCAT_LEFT_RIGHT_ALONG', None)
 
-        # by default, do two separate passes (traditional way)
-        self.forward = self.forward_left_right_one_by_one
+            if self.concat_type is None or self.concat_type not in ['batch', 'horizontal', 'vertical', 'multicut']:
+                raise ValueError(f"MODEL.BACKBONE_CFGS.CONCAT_LEFT_RIGHT_ALONG parameter must be one of: batch, horizontal, vertical, multicut. Got: {self.concat_type}")
+            
+            print(f"Concatenation type: {self.concat_type}")
 
-        # check if batching requested (new proposal)
-        if (cfgs is not None):
-            should_concat = cfgs.get('CONCAT_LEFT_RIGHT', False) # if not supplied, then assume False
-            if should_concat:
-                concat_type = cfgs.get('CONCAT_LEFT_RIGHT_ALONG', None)
-                if concat_type is None:
-                    raise ValueError(f"Could not find MODEL.BACKBONE_CFGS.CONCAT_LEFT_RIGHT_ALONG parameter in yaml config file.")
-                print(f"BACKBONE CONCAT LEFT-RIGHT is ENABLED. Type: {concat_type}")
-                if concat_type == 'batch':
-                    self.forward = self.forward_left_right_images_along_batch
-                elif concat_type == 'horizontal':
-                    self.forward = self.forward_left_right_images_horizontal
-                elif concat_type == 'vertical':
-                    self.forward = self.forward_left_right_images_vertical
-                elif concat_type == 'multicut':
-                    self.forward = self.forward_left_right_images_multicut
-                    self.h_division = cfgs.get('H_DIVISION', 1)
-                    self.w_division = cfgs.get('W_DIVISION', 2)
-                    # if self.h_division is None or self.w_division is None:
-                    #     raise ValueError(f"MODEL.BACKBONE_CFGS.H_DIV and W_DIV must be specified for multicut concatenation.")
-                    print(f"Multicut concat: H_DIVISION={self.h_division}, W_DIVISION={self.w_division}")
-                else:
-                    raise NotImplementedError(f"Concat type '{concat_type}' is not implemented. Available: batch, horizontal, vertical, multicut")
+            if self.concat_type == 'multicut':
+                self.h_division = cfgs.get('H_DIVISION', 1)
+                self.w_division = cfgs.get('W_DIVISION', 2)   
+                print(f"Multicut concat: H_DIVISION={self.h_division}, W_DIVISION={self.w_division}")     
 
-    # def forward_single_image(self, image):
-    #     # pass through backbone
-    #     return self.impl(image)
+        
+
+class ConcatenationAssembly(ConcatenationModule):
+    def __init__(self, cfgs):
+        super().__init__(cfgs)
+
+        # self.forward = self.passthrough  # default to passthrough if no concatenation
+
+        # if self.should_concat:
+        #     if self.concat_type == 'batch':
+        #         self.forward = self.assemble_batch
+        #     elif self.concat_type == 'horizontal':
+        #         self.forward = self.assemble_horizontal
+        #     elif self.concat_type == 'vertical':
+        #         self.forward = self.assemble_vertical
+        #     elif self.concat_type == 'multicut':
+        #         self.forward = self.assemble_multicut
+        #     else:
+        #         raise NotImplementedError(f"Concat type '{self.concat_type}' is not implemented. Available: batch, horizontal, vertical, multicut")
+
+    def forward(self, image_left, image_right):
+        if self.should_concat:
+            if self.concat_type == 'batch':
+                return self.assemble_batch(image_left, image_right)
+            elif self.concat_type == 'horizontal':
+                return self.assemble_horizontal(image_left, image_right)
+            elif self.concat_type == 'vertical':
+                return self.assemble_vertical(image_left, image_right)
+            elif self.concat_type == 'multicut':
+                return self.assemble_multicut(image_left, image_right)
+            else:
+                raise NotImplementedError(f"Concat type '{self.concat_type}' is not implemented. Available: batch, horizontal, vertical, multicut")
+        else:
+             return self.passthrough(image_left), self.passthrough(image_right)
+
+    def passthrough(self, image):
+        return image
+
+    # concatenate left and right images along batch
+    def assemble_batch(self, image_left, image_right):
+        return torch.cat([image_left, image_right], dim=0)
+
+    # concatenate along horizontal dimension
+    def assemble_horizontal(self, image_left, image_right):
+        return torch.cat([image_left, image_right], dim=-1)
+
+    # concatenate along vertical dimension
+    def assemble_vertical(self, image_left, image_right):
+        return torch.cat([image_left, image_right], dim=-2)
+
+    def assemble_multicut(self, image_left, image_right):
+        image_left_parts = []
+        image_right_parts = []
+
+        # after division, the new height and width need to be divisible by 32 (depending on the backbone)
+
+        nr_of_parts = self.w_division * self.h_division  # 8
+        h, w, b = image_left.size(-2), image_left.size(-1), image_left.size(0)
+        h_divided = h // self.h_division
+        w_divided = w // self.w_division
+
+        assert h_divided % 32 == 0, f"Divided down height {h_divided} not divisible by 32 (originally {h})"
+        assert w_divided % 32 == 0, f"Divided down width {w_divided} not divisible by 32 (originally {w})"
+        
+        for i in range(self.h_division):
+            for j in range(self.w_division):
+                image_left_parts.append(image_left[..., i*h_divided:(i+1)*h_divided, j*w_divided:(j+1)*w_divided])
+                image_right_parts.append(image_right[..., i*h_divided:(i+1)*h_divided, j*w_divided:(j+1)*w_divided])
+
+        left_stack = torch.cat(image_left_parts, dim=0)
+        right_stack = torch.cat(image_right_parts, dim=0)
+
+        # concatenate all parts along batch dimension
+        combined = torch.cat((left_stack, right_stack), dim=0)
+
+        return combined
+  
+
+
+class ConcatenationDisassembly(ConcatenationModule):
+    def __init__(self, cfgs):
+        super().__init__(cfgs)
+
+        # self.forward = self.passthrough  # default to passthrough if no concatenation
+
+        # if self.should_concat:
+        #     if self.concat_type == 'batch':
+        #         self.forward = self.disassemble_batch
+        #     elif self.concat_type == 'horizontal':
+        #         self.forward = self.disassemble_horizontal
+        #     elif self.concat_type == 'vertical':
+        #         self.forward = self.disassemble_vertical
+        #     elif self.concat_type == 'multicut':
+        #         self.forward = self.disassemble_multicut
+        #     else:
+        #         raise NotImplementedError(f"Concat type '{self.concat_type}' is not implemented. Available: batch, horizontal, vertical, multicut")
+
+    def forward(self, features):
+        if self.should_concat:
+            if self.concat_type == 'batch':
+                return self.disassemble_batch(features)
+            elif self.concat_type == 'horizontal':
+                return self.disassemble_horizontal(features)
+            elif self.concat_type == 'vertical':
+                return self.disassemble_vertical(features)
+            elif self.concat_type == 'multicut':
+                return self.disassemble_multicut(features)
+            else:
+                raise NotImplementedError(f"Concat type '{self.concat_type}' is not implemented. Available: batch, horizontal, vertical, multicut")
+        else:
+             return features
     
-    def forward_left_right_one_by_one(self, image_left, image_right):
-        # first left
-        features_left = self.impl(image_left)
-        # then right
-        features_right = self.impl(image_right)
-        # return together
-        return features_left, features_right
-    
-    # dimensions: batch, channels, height, width
-    def forward_left_right_images_along_batch(self, image_left, image_right):
-        # concatenate along batch dimension
-        combined = torch.cat([image_left, image_right], dim=0)
+    def passthrough(self, features):
+        return features
 
-        # pass through backbone
-        combined_features = self.impl(combined)
+    def disassemble_batch(self, combined_features):
+        # split features back to left and right
+        initial_batch_size = combined_features[0].size(0) // 2
+
+        features_left = []
+        features_right = []
 
         # split features back to left and right
-        features_left = [feat[:image_left.size(0)] for feat in combined_features]
-        features_right = [feat[image_left.size(0):] for feat in combined_features]
+        for feat in combined_features:            
+            features_left.append(feat[:initial_batch_size])
+            features_right.append(feat[initial_batch_size:])
+
         return features_left, features_right
 
-    def forward_left_right_images_horizontal(self, image_left, image_right):
-        # concatenate along horizontal dimension
-        combined = torch.cat([image_left, image_right], dim=-1)
-
-        # pass through backbone
-        combined_features = self.impl(combined)
+    def disassemble_horizontal(self, combined_features):
 
         features_left = []
         features_right = []
@@ -438,12 +520,8 @@ class Backbone(nn.Module):
 
         return features_left, features_right
 
-    def forward_left_right_images_vertical(self, image_left, image_right):
-        # concatenate along vertical dimension
-        combined = torch.cat([image_left, image_right], dim=-2)
+    def disassemble_vertical(self, combined_features):
 
-        # pass through backbone
-        combined_features = self.impl(combined)
         features_left = []
         features_right = []
 
@@ -456,80 +534,21 @@ class Backbone(nn.Module):
 
         return features_left, features_right
 
-    def forward_left_right_images_multicut(self, image_left, image_right):
-        
-        # [24, 3, 544, 960], tensor contigous = yes type: <class 'torch.Tensor'>
-
-        # cut each image into 4 parts vertically and 2 parts horizontally -> 8 parts
-        image_left_parts = []
-        image_right_parts = []
-        w_division = self.w_division
-        h_division = self.h_division
-        # after division, the new height and width need to be divisible by 32 (depending on the backbone)
-
-        # w_division = 4
-        # h_division = 2
-        nr_of_parts = w_division * h_division  # 8
-        h, w, b = image_left.size(-2), image_left.size(-1), image_left.size(0)
-        h_divided = h // h_division
-        w_divided = w // w_division
-        assert h_divided % 32 == 0, f"Divided down height {h_divided} not divisible by 32 (originally {h})"
-        assert w_divided % 32 == 0, f"Divided down width {w_divided} not divisible by 32 (originally {w})"
-        
-        for i in range(h_division):
-            for j in range(w_division):
-                image_left_parts.append(image_left[..., i*h_divided:(i+1)*h_divided, j*w_divided:(j+1)*w_divided])
-                image_right_parts.append(image_right[..., i*h_divided:(i+1)*h_divided, j*w_divided:(j+1)*w_divided])
-
-        # print(f"image_left_parts size: {[part.size() for part in image_left_parts]}")
-        # [torch.Size([24, 3, 272, 240]), torch.Size([24, 3, 272, 240]), torch.Size([24, 3, 272, 240]), torch.Size([24, 3, 272, 240]), torch.Size([24, 3, 272, 240]), torch.Size([24, 3, 272, 240]), torch.Size([24, 3, 272, 240]), torch.Size([24, 3, 272, 240])]
-        
-        left_stack = torch.cat(image_left_parts, dim=0)
-        right_stack = torch.cat(image_right_parts, dim=0)
-
-        # print(f"image_left_parts.size: {left_stack.size()}")
-        # torch.Size([192, 3, 272, 240])
-        # print(f"image_right_parts.size: {right_stack.size()}")
-
-        # concatenate all parts along batch dimension
-        combined = torch.cat((left_stack, right_stack), dim=0)
-
-        # [b*2*8, 3, h/4, w/2], tensor contigous = 
-        # print(f"combined.size: {combined.size()}. is contiguous: {combined.is_contiguous()}. type: {type(combined)}")
-        # torch.Size([384, 3, 272, 240])
-
-        # combined = combined.contiguous()
-        # print(f"combined.is_contiguous(): {combined.is_contiguous()}")
-        # pass through backbone
-        combined_features = self.impl(combined)
-        # [b*2*8, 64, h/4, w/2], tensor contigous = 
-        # [b*2*8, 128, h/8, w/4], tensor contigous = 
-        # [b*2*8, 196, h/16, w/8], tensor contigous = 
-
-        # print(f"combined_features.size: {[feat.size() for feat in combined_features]}")
-
-        # features_left = [[] for _ in range(len(combined_features))]
-        # features_right = [[] for _ in range(len(combined_features))]
+    def disassemble_multicut(self, combined_features):
         features_left = []
         features_right = []
-        # features_left = [[] for _ in range(3)] # we get 
-        # features_right = [[] for _ in range(3)]
 
-        # split features back to left and right parts
-        # combined_features_left = [feat[:nr_of_parts*b, ...] for feat in combined_features]
-        # combined_features_right = [feat[nr_of_parts*b:, ...] for feat in combined_features]
-        
-        # combined_features_left = []
-        # combined_features_right = []
+        nr_of_parts = self.w_division * self.h_division
+
+        # h, w, b = image_left.size(-2), image_left.size(-1), image_left.size(0)
+
+        b = combined_features[0].size(0) // (2 * nr_of_parts) # original batch size before multicut and concatenation
 
         for feat in combined_features:
 
             # should be [b*2*8, c, h/4, w/2]
             combined_features_left = feat[:nr_of_parts*b, ...]
             combined_features_right = feat[nr_of_parts*b:, ...]
-
-            # print(f"combined_features_left.size: {combined_features_left.size()}")
-            # print(f"combined_features_right.size: {combined_features_right.size()}")
 
             left_feat_image = []
             right_feat_image = []
@@ -538,23 +557,14 @@ class Backbone(nn.Module):
 
                 left_v_sequence = []
                 right_v_sequence = []
-                for i in range(h_division): # along height
+                for i in range(self.h_division): # along height
 
                     left_h_sequence = []
                     right_h_sequence = []
-                    for j in range(w_division): # along width
+                    for j in range(self.w_division): # along width
 
-                        # print(f"bi: {bi}, i: {i}, j: {j} -> index: {bi*nr_of_parts + i*h_division + j}")
-
-                        # temp = combined_features_left[bi*nr_of_parts + i*h_division + j, ...]
-                        # [1, c, h/(4*1), w/(4*2)]
-                        # print(f"temp size: {temp.size()}") # torch.Size([160, 17, 15])
-
-                        left_h_sequence.append(combined_features_left[i*b*w_division + j*b + bi, ...]) # append to horizontal sequence
-                        right_h_sequence.append(combined_features_right[i*b*w_division + j*b + bi, ...])
-
-                        # left_feat_image[bi, :, i*h_divided:(i+1)*h_divided, j*w_divided:(j+1)*w_divided] = combined_features_left[bi*nr_of_parts + i*w_division + j, ...]
-                        # right_feat_image[bi, :, i*h_divided:(i+1)*h_divided, j*w_divided:(j+1)*w_divided] = combined_features_right[bi*nr_of_parts + i*w_division + j, ...]
+                        left_h_sequence.append(combined_features_left[i*b*self.w_division + j*b + bi, ...]) # append to horizontal sequence
+                        right_h_sequence.append(combined_features_right[i*b*self.w_division + j*b + bi, ...])
 
                     left_v_sequence.append(torch.cat(left_h_sequence, dim=-1)) # first concat along width (get full row), then append to vertical sequence
                     right_v_sequence.append(torch.cat(right_h_sequence, dim=-1))
@@ -562,21 +572,71 @@ class Backbone(nn.Module):
                 left_feat_image.append(torch.cat(left_v_sequence, dim=-2)) # first concat along height (get full image), then append along batch dimension
                 right_feat_image.append(torch.cat(right_v_sequence, dim=-2))
 
-            # print(f"left_feat_image size: {[part.size() for part in left_feat_image]}")
-            # [torch.Size([160, 17, 30]), torch.Size([160, 17, 30]), torch.Size([160, 17, 30]), torch.Size([160, 17, 30]), torch.Size([160, 17, 30]), torch.Size([160, 17, 30]), torch.Size([160, 17, 30]), torch.Size([160, 17, 30]), torch.Size([160, 17, 30]), torch.Size([160, 17, 30]), torch.Size([160, 17, 30]), torch.Size([160, 17, 30]), torch.Size([160, 17, 30]), torch.Size([160, 17, 30]), torch.Size([160, 17, 30]), torch.Size([160, 17, 30]), torch.Size([160, 17, 30]), torch.Size([160, 17, 30]), torch.Size([160, 17, 30]), torch.Size([160, 17, 30]), torch.Size([160, 17, 30]), torch.Size([160, 17, 30]), torch.Size([160, 17, 30]), torch.Size([160, 17, 30])]
-
             features_left.append(torch.stack(left_feat_image, dim=0)) # first stack along batch, then append to features list
             features_right.append(torch.stack(right_feat_image, dim=0))
 
-        # print(f"features_left size: {[feat.size() for feat in features_left]}")
-        # [torch.Size([24, 24, 136, 240]), torch.Size([24, 32, 68, 120]), torch.Size([24, 96, 34, 60]), torch.Size([24, 160, 17, 30])]
-
         return features_left, features_right
 
-    # def forward(self, images):
-    # def forward(self, *args):
 
-        # return self.impl(images)
+
+class Backbone(nn.Module):
+    """Thin wrapper kept for backward compatibility. Delegates to a specific backbone implementation."""
+    def __init__(self, backbone: str = 'MobileNetv2', cfgs = None, pretrained: bool = True, checkpoint_path: str = None):
+        super().__init__()
+        print(f"Using backbone: {backbone}, pretrained: {pretrained}, checkpoint_path: {checkpoint_path}")
+        self.impl = build_backbone(backbone, cfgs=cfgs, pretrained=pretrained, checkpoint_path=checkpoint_path)
+        self.assembly = ConcatenationAssembly(cfgs)
+        self.disassembly = ConcatenationDisassembly(cfgs)
+        self.output_channels = getattr(self.impl, 'output_channels', None)
+
+        # by default, do two separate passes (traditional way)
+        # self.forward = self.forward_left_right_one_by_one
+
+        self.should_concat = cfgs.get('CONCAT_LEFT_RIGHT', False)
+
+        # check if batching requested (new proposal)
+        # if (cfgs is not None):
+        #     if cfgs.get('CONCAT_LEFT_RIGHT', False): # if not supplied, then assume False
+        #         self.forward = self.forward_concatenated
+    
+
+    def forward(self, image_left, image_right):
+        if self.should_concat:
+            return self.forward_concatenated(image_left, image_right)
+        else:
+            return self.forward_left_right_one_by_one(image_left, image_right)
+
+    def forward_left_right_one_by_one(self, image_left, image_right):
+   
+        # First left
+        # image_left = self.assembly(image_left)
+        
+        # configured as pass through
+        image_left, image_right = self.assembly(image_left, image_right)
+        
+        features_left = self.impl(image_left)
+        # features_left = self.disassembly(features_left)
+
+        # Then right
+        # image_right = self.assembly(image_right)
+        features_right = self.impl(image_right)
+        
+        features_left = self.disassembly(features_left)
+        features_right = self.disassembly(features_right)
+
+        
+        
+        return features_left, features_right
+   
+    def forward_concatenated(self, image_left, image_right):
+
+        # Both at the same time
+        concatenated_images = self.assembly(image_left, image_right)
+        combined_features = self.impl(concatenated_images)
+        features_left, features_right = self.disassembly(combined_features)
+
+        return features_left, features_right
+    
 
 
 def count_model_params(model):
